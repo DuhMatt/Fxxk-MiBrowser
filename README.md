@@ -1,5 +1,3 @@
-
-```markdown
 # HyperOS MiShare Browser Fix
 
 ## 中文说明
