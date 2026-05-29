@@ -5,7 +5,7 @@
 
     <application
         android:allowBackup="false"
-        android:label="HyperOS Browser Fix"
+        android:label="Fxxk-MiBrowser"
         android:supportsRtl="true">
 
         <!-- LSPosed / Xposed module marker -->

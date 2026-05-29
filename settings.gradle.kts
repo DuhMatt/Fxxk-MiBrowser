@@ -18,5 +18,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "HyperOSBrowserFix"
+rootProject.name = "Fxxk-MiBrowser"
 include(":app")

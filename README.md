@@ -1,4 +1,4 @@
-# HyperOS MiShare Browser Fix
+# Fxxk-MiBrowser
 
 当前版本：`1.1`
 
@@ -93,7 +93,7 @@ http://192.168.1.1
 
 ### 安装
 
-普通用户建议直接到 [Releases](https://github.com/DuhMatt/HyperOS-MiShare-Browser-Fix/releases) 下载已签名的 APK。
+普通用户建议直接到 [Releases](https://github.com/DuhMatt/Fxxk-MiBrowser/releases) 下载已签名的 APK。
 
 安装后，在 LSPosed 里启用模块并选择上面的作用域。改完作用域后最好重启手机；只强制停止相关应用有时也能生效，但不如重启稳。
 
@@ -230,7 +230,7 @@ Recommended LSPosed scope:
 
 ### Install
 
-For normal use, download the signed APK from [Releases](https://github.com/DuhMatt/HyperOS-MiShare-Browser-Fix/releases).
+For normal use, download the signed APK from [Releases](https://github.com/DuhMatt/Fxxk-MiBrowser/releases).
 
 After installing it, enable the module in LSPosed and select the scopes above. A full reboot is the cleanest way to apply scope changes; force-stopping the scoped apps may work, but rebooting is less fiddly.
 
