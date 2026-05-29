@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Default recommended scopes for LSPosed.
+         User can adjust in LSPosed Manager after installation. -->
+    <string-array name="xposed_scope">
+        <!-- System Framework — catches all processes -->
+        <item>android</item>
+        <!-- Mi Share -->
+        <item>com.miui.mishare.connectivity</item>
+        <!-- Xiaomi App Store (download page redirects) -->
+        <item>com.xiaomi.market</item>
+        <!-- Mi Mirror / device interconnect -->
+        <item>com.xiaomi.mirror</item>
+        <!-- Xiaomi Browser itself -->
+        <item>com.android.browser</item>
+        <!-- Mi Video — sometimes handles URLs -->
+        <item>com.miui.video</item>
+        <!-- Security Center — can open links -->
+        <item>com.miui.securitycenter</item>
+        <!-- System UI -->
+        <item>com.android.systemui</item>
+        <!-- HyperAI Engine — clipboard URL recognition + screen recognition -->
+        <item>com.xiaomi.aicr</item>
+        <!-- Super XiaoAi / voice assistant — screen recognition URLs -->
+        <item>com.miui.voiceassist</item>
+    </string-array>
+</resources>

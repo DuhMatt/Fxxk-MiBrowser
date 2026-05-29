@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- No launcher Activity — this is an Xposed module, not a regular app -->
+
+    <application
+        android:allowBackup="false"
+        android:label="HyperOS Browser Fix"
+        android:supportsRtl="true">
+
+        <!-- LSPosed / Xposed module marker -->
+        <meta-data
+            android:name="xposedmodule"
+            android:value="true" />
+
+        <!-- Module description shown in LSPosed Manager -->
+        <meta-data
+            android:name="xposeddescription"
+            android:value="Fix: prevent HyperOS from forcing links to open in Xiaomi Browser. Redirects to system default browser instead." />
+
+        <!-- Minimum Xposed API version -->
+        <meta-data
+            android:name="xposedminversion"
+            android:value="82" />
+
+        <!--
+        Recommended LSPosed scope (can be changed in LSPosed Manager):
+        - System Framework (android) — catches all processes via ContextImpl hook
+        - com.miui.mishare.connectivity — Mi Share
+        - com.xiaomi.market — Xiaomi App Store
+        - com.xiaomi.mirror — Mi Mirror / device interconnect
+        - com.android.browser — Xiaomi Browser itself (if installed)
+        -->
+        <meta-data
+            android:name="xposedscope"
+            android:resource="@array/xposed_scope" />
+
+    </application>
+
+</manifest>
