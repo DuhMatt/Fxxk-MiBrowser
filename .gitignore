@@ -15,6 +15,7 @@ local.properties
 *.p12
 *.pem
 *.key
+signing/
 
 .DS_Store
 .qwen/
