@@ -13,12 +13,6 @@ v1.2 的新增内容：
 - 过滤小爱自身图标资源、代码常量和 Android 包名，避免误把 `https://` 当成 `https://com.android.browser`。
 - 顺便修了一下 `assembleRelease` 没有接 `signingConfigs` 的问题，现在会用本地 release keystore 签名 release APK。
 
-三个版本的功能演进：
-
-- v1.0：小米互传接收到网页链接后强制打开小米浏览器的修复。
-- v1.1：增加 Wi-Fi 详情页“管理小米路由”的修复，`http://192.168.1.1` 这种路由器后台地址不再被甩到小米浏览器。
-- v1.2：本次小爱识屏 / 超级小爱的修复。
-
 模块不会硬编码 Chrome、Edge、Firefox、Via 或任何固定浏览器；不设置默认浏览器时回退到系统浏览器选择器。只处理网页 Intent，不影响文件、电话、短信、地图、应用私有 scheme。
 
 ### English
@@ -31,11 +25,5 @@ New in v1.2:
 - Expand the Mi Share-only URL cache into a generic Xiaomi system-component URL cache, so the original web URL can be recovered from XiaoAi, AI Engine, and related flows.
 - Filter XiaoAi's own icon assets, code constants, and Android package names, so a recovered URL is never something like `https://com.android.browser`.
 - Wire up the missing `signingConfigs.release` so `assembleRelease` now produces a properly signed APK with the local release keystore.
-
-Three-version history:
-
-- v1.0: Mi Share URL recovery — stop Mi Share from forcing web links into Xiaomi Browser.
-- v1.1: Wi-Fi details "Manage Xiaomi router" fix — router admin URLs like `http://192.168.1.1` are no longer routed through Xiaomi Browser.
-- v1.2: This release, XiaoAi / Super XiaoAi screen-recognition fix.
 
 The module does not hard-code any third-party browser and does not choose Chrome, Edge, Firefox, Via, or any other browser for the user. If no default browser is set, it falls back to the Android system chooser. Only web Intents are affected; files, phone, SMS, maps, and app-private schemes pass through untouched.
