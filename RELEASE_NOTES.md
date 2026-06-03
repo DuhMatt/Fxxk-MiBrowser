@@ -1,29 +1,41 @@
 # Release Notes
 
-## 中文
+## v1.2 (current)
 
-这个版本的重点是：拦截小米系统对网页链接的强制接管，让链接回到用户自己设置的系统默认浏览器，而不是继续调用小米浏览器。
+### 中文
 
-主要修复三个场景：
+v1.2 的新增内容：
 
-1. 小米互传接收到网页链接后强制打开小米浏览器。
-2. 系统设置里连接小米路由器时，“管理小米路由”入口强制跳转小米浏览器。
-3. 小爱识屏 / 超级小爱识别到网页链接后，点击链接仍然调用小米浏览器。
+- 修复小爱识屏 / 超级小爱识别到网页链接后强制调用小米浏览器的问题。模块会从识屏结果对象里恢复原始 `http(s)` 链接，识别小米应用商店的浏览器下载页跳转，例如 `market://details?id=com.android.browser` 或 `mimarket://details?id=com.android.browser`，并交给系统默认浏览器。
+- 当小爱识屏链路已经变成 `mimarket://details?id=com.android.browser` 时，从识屏结果对象里恢复原始 URL。
+- 增加小爱识屏 / 超级小爱相关作用域：`com.miui.voiceassist`、`com.xiaomi.aicr`、`com.xiaomi.aiasst.vision`。
+- 把原来的 MiShare 专用 URL 缓存扩展为 Xiaomi 系统组件通用缓存，方便从小爱、AI Engine 等链路里找回原始网页链接。
+- 过滤小爱自身图标资源、代码常量和 Android 包名，避免误把 `https://` 当成 `https://com.android.browser`。
+- 顺便修了一下 `assembleRelease` 没有接 `signingConfigs` 的问题，现在会用本地 release keystore 签名 release APK。
 
-模块会尽量恢复原始 `http` / `https` 链接，移除指向 `com.android.browser` 的固定目标，并识别小米应用商店的浏览器下载页跳转，例如 `market://details?id=com.android.browser` 或 `mimarket://details?id=com.android.browser`。恢复后的链接会交给 Android 当前的默认浏览器处理；如果系统没有默认浏览器，则使用系统浏览器选择器。
+三个版本的功能演进：
 
-它不会硬编码某个第三方浏览器，也不会替用户决定用 Chrome、Edge、Firefox、Via 或其他浏览器。
+- v1.0：小米互传接收到网页链接后强制打开小米浏览器的修复。
+- v1.1：增加 Wi-Fi 详情页“管理小米路由”的修复，`http://192.168.1.1` 这种路由器后台地址不再被甩到小米浏览器。
+- v1.2：本次小爱识屏 / 超级小爱的修复。
 
-## English
+模块不会硬编码 Chrome、Edge、Firefox、Via 或任何固定浏览器；不设置默认浏览器时回退到系统浏览器选择器。只处理网页 Intent，不影响文件、电话、短信、地图、应用私有 scheme。
 
-This release focuses on one thing: stopping Xiaomi system components from forcing web links into Xiaomi Browser, and sending those links back to the browser the user selected as the Android default browser.
+### English
 
-Main fixed scenarios:
+New in v1.2:
 
-1. Mi Share opens received web links with Xiaomi Browser.
-2. The "Manage Xiaomi router" entry in system Wi-Fi settings opens Xiaomi Browser.
-3. XiaoAi / Super XiaoAi screen recognition opens recognized web links with Xiaomi Browser.
+- Fix XiaoAi / Super XiaoAi screen recognition forcing recognised web links into Xiaomi Browser. The original `http(s)` URL is recovered from the screen-recognition payload, Xiaomi Market browser download-page redirects (`market://details?id=com.android.browser` / `mimarket://details?id=com.android.browser`) are detected, and the link is handed to the system default browser.
+- When the XiaoAi screen-recognition flow has already been rewritten into `mimarket://details?id=com.android.browser`, the original URL is recovered from the recognition result object.
+- Add scope for `com.miui.voiceassist`, `com.xiaomi.aicr`, and `com.xiaomi.aiasst.vision`.
+- Expand the Mi Share-only URL cache into a generic Xiaomi system-component URL cache, so the original web URL can be recovered from XiaoAi, AI Engine, and related flows.
+- Filter XiaoAi's own icon assets, code constants, and Android package names, so a recovered URL is never something like `https://com.android.browser`.
+- Wire up the missing `signingConfigs.release` so `assembleRelease` now produces a properly signed APK with the local release keystore.
 
-The module tries to recover the original `http` / `https` URL, removes fixed targets pointing to `com.android.browser`, and detects Xiaomi Market browser download-page redirects such as `market://details?id=com.android.browser` or `mimarket://details?id=com.android.browser`. The recovered link is then handed to Android's current default browser; if no default browser is set, Android's normal browser chooser is used.
+Three-version history:
 
-It does not hard-code any third-party browser and does not choose Chrome, Edge, Firefox, Via, or any other browser for the user.
+- v1.0: Mi Share URL recovery — stop Mi Share from forcing web links into Xiaomi Browser.
+- v1.1: Wi-Fi details "Manage Xiaomi router" fix — router admin URLs like `http://192.168.1.1` are no longer routed through Xiaomi Browser.
+- v1.2: This release, XiaoAi / Super XiaoAi screen-recognition fix.
+
+The module does not hard-code any third-party browser and does not choose Chrome, Edge, Firefox, Via, or any other browser for the user. If no default browser is set, it falls back to the Android system chooser. Only web Intents are affected; files, phone, SMS, maps, and app-private schemes pass through untouched.
