@@ -52,14 +52,17 @@ object IntentInterceptor {
     private val seenIntentIds = ConcurrentHashMap.newKeySet<Int>()
 
     @Volatile
-    private var lastMiShareUrl: Uri? = null
+    private var lastXiaomiSourceUrl: Uri? = null
 
     @Volatile
-    private var lastMiShareUrlAt: Long = 0L
+    private var lastXiaomiSourceUrlAt: Long = 0L
+
+    @Volatile
+    private var lastXiaomiSourceLabel: String = "unknown"
 
     /** Max size before we clear the seen-intents set to avoid memory leak. */
     private const val MAX_SEEN_INTENTS = 200
-    private const val MI_SHARE_URL_CACHE_MS = 2 * 60 * 1000L
+    private const val XIAOMI_SOURCE_URL_CACHE_MS = 2 * 60 * 1000L
     private const val MAX_OBJECT_SCAN_DEPTH = 4
 
     // ── Public API: called from MainHook ─────────────────────────────────
@@ -103,7 +106,16 @@ object IntentInterceptor {
                     (scheme != null && scheme.startsWith("mi"))
 
                 if (needsFallback) {
-                    Log.w(TAG, "URL recovery failed; keeping original intent instead of opening https://")
+                    if (isXiaomiBrowserDownloadUri(intent.data)) {
+                        val fallback = DefaultBrowserResolver.buildOpenBrowserIntent(browser.packageName)
+                        fallback.flags = cleaned.flags
+                        fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        Log.w(TAG, "URL recovery failed; opening default browser instead of Xiaomi Market")
+                        param.result = null
+                        context.startActivity(fallback, options)
+                    } else {
+                        Log.w(TAG, "URL recovery failed; keeping original intent instead of opening https://")
+                    }
                     return
                 }
 
@@ -177,7 +189,16 @@ object IntentInterceptor {
                     (scheme != null && scheme.startsWith("mi"))
 
                 if (needsFallback) {
-                    Log.w(TAG, "URL recovery failed (Instr); keeping original intent instead of opening https://")
+                    if (isXiaomiBrowserDownloadUri(intent.data)) {
+                        val fallback = DefaultBrowserResolver.buildOpenBrowserIntent(browser.packageName)
+                        fallback.flags = cleaned.flags
+                        fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        Log.w(TAG, "URL recovery failed (Instr); opening default browser instead of Xiaomi Market")
+                        param.result = null
+                        context.startActivity(fallback)
+                    } else {
+                        Log.w(TAG, "URL recovery failed (Instr); keeping original intent instead of opening https://")
+                    }
                     return
                 }
 
@@ -223,16 +244,45 @@ object IntentInterceptor {
      * URL when we still have access to Mi Share's service Intent.
      */
     internal fun rememberMiShareUrl(intent: Intent) {
-        val url = extractWebUriFromIntent(intent)
+        rememberWebUrlFromIntent(intent, "Mi Share")
+    }
+
+    /**
+     * Cache a web URL seen inside Xiaomi system apps before they rewrite it
+     * into `market://details?id=com.android.browser`.
+     *
+     * XiaoAi Screen Recognition often sees the real URL first, then checks or
+     * launches Xiaomi Browser. If the browser is uninstalled, the later Intent
+     * may only contain the Market download page, so this short-lived cache is
+     * the safest way to restore the original link.
+     */
+    internal fun rememberWebUrlFromIntent(intent: Intent, source: String) {
+        val url = extractLikelyWebUriFromIntent(intent)
         if (url != null) {
-            lastMiShareUrl = url
-            lastMiShareUrlAt = System.currentTimeMillis()
-            Log.i(TAG, "Cached Mi Share URL: $url")
+            rememberWebUrl(url, source)
+        }
+    }
+
+    internal fun rememberWebUrlFromValue(value: Any?, source: String) {
+        val url = extractLikelyWebUriFromValue(value, newVisitedSet())
+        if (url != null) {
+            rememberWebUrl(url, source)
         }
     }
 
     internal fun recoverUrl(intent: Intent): Uri? {
-        return extractWebUriFromIntent(intent)
+        return extractWebUriFromIntent(intent) ?: getRecentXiaomiSourceUrl()
+    }
+
+    internal fun recoverUrlForRedirect(intent: Intent): Uri? {
+        val scheme = intent.data?.scheme
+        return when {
+            scheme == "market" -> recoverUrlFromMarketIntent(intent)
+            scheme == "intent" -> recoverUrlFromIntentScheme(intent) ?: getRecentXiaomiSourceUrl()
+            scheme == "mi" || scheme?.startsWith("mi") == true ->
+                recoverUrlFromMiScheme(intent) ?: getRecentXiaomiSourceUrl()
+            else -> recoverUrl(intent)
+        }
     }
 
     // ── Decision logic ───────────────────────────────────────────────────
@@ -310,7 +360,8 @@ object IntentInterceptor {
 
         // Case E: mi:// scheme — Xiaomi's custom URL wrapper
         // (used by Xiaomi AI Engine and voice assistant)
-        if (scheme == "mi" || scheme.startsWith("mi")) {
+        if ((scheme == "mi" || scheme.startsWith("mi")) &&
+            (isXiaomiBrowserDownloadUri(data) || recoverUrlFromMiScheme(intent) != null)) {
             Log.d(TAG, "Will intercept (mi:// scheme): caller=$callerPackage, data=$data")
             return true
         }
@@ -325,8 +376,7 @@ object IntentInterceptor {
         // This is what Mi Share does: it calls startActivity(market://details?id=com.android.browser)
         // with pkg=null. The URL has already been converted to a market link.
         if (scheme == "market" && targetPkg == null && targetComponent == null) {
-            val marketId = data.getQueryParameter("id")
-            if (XiaomiPackageList.isXiaomiBrowser(marketId)) {
+            if (isXiaomiBrowserDownloadUri(data)) {
                 Log.d(TAG, "Will intercept (market://id=browser): caller=$callerPackage, data=$data")
                 return true
             }
@@ -386,7 +436,7 @@ object IntentInterceptor {
                     cleaned.data = recovered
                 }
             } else if (scheme == "mi" || (scheme != null && scheme.startsWith("mi"))) {
-                val recovered = recoverUrlFromMiScheme(cleaned)
+                val recovered = recoverUrlForRedirect(cleaned)
                 if (recovered != null) {
                     Log.i(TAG, "Recovered original URL from mi:// intent: $recovered")
                     cleaned.data = recovered
@@ -425,8 +475,8 @@ object IntentInterceptor {
             return Uri.parse(urlParam)
         }
 
-        getRecentMiShareUrl()?.let {
-            Log.i(TAG, "Recovered original URL from Mi Share cache: $it")
+        getRecentXiaomiSourceUrl()?.let {
+            Log.i(TAG, "Recovered original URL from Xiaomi source cache: $it")
             return it
         }
 
@@ -469,8 +519,10 @@ object IntentInterceptor {
                 val value = data.getQueryParameter(key)
                 if (!value.isNullOrEmpty()) {
                     val trimmed = value.trim()
-                    if (trimmed.startsWith("http://") || trimmed.startsWith("https://") ||
-                        (trimmed.contains(".") && !trimmed.contains(" "))) {
+                    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+                        return Uri.parse(trimmed)
+                    }
+                    if (looksLikeDomain(trimmed)) {
                         return Uri.parse(normalizeUrl(trimmed))
                     }
                 }
@@ -483,8 +535,10 @@ object IntentInterceptor {
                 val value = intent.extras!!.get(key)
                 if (value is String) {
                     val trimmed = value.trim()
-                    if (trimmed.startsWith("http://") || trimmed.startsWith("https://") ||
-                        (trimmed.contains(".") && !trimmed.contains(" ") && trimmed.length > 4)) {
+                    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+                        return Uri.parse(trimmed)
+                    }
+                    if (looksLikeDomain(trimmed)) {
                         return Uri.parse(normalizeUrl(trimmed))
                     }
                 }
@@ -541,6 +595,77 @@ object IntentInterceptor {
         }
     }
 
+    private fun looksLikeDomain(raw: String): Boolean {
+        val value = raw.trim()
+        if (value.length <= 4 || value.contains(" ")) return false
+        if (value.any { it.isUpperCase() }) return false
+        if (!value.contains(".")) return false
+        if (value.startsWith("android.intent.")) return false
+        if (XiaomiPackageList.isXiaomiBrowser(value) || XiaomiPackageList.isXiaomiMarket(value)) return false
+        if (isAndroidPackageName(value)) return false
+
+        val host = value.substringBefore('/').substringBefore('?').substringBefore('#')
+        val labels = host.split('.')
+        if (labels.size < 2) return false
+        val tld = labels.last()
+        return tld.length in 2..24 && tld.all { it.isLetter() }
+    }
+
+    private fun isAndroidPackageName(value: String): Boolean {
+        val parts = value.split('.')
+        if (parts.size < 3) return false
+        return parts.all { part ->
+            part.isNotEmpty() &&
+                part.first().isLetter() &&
+                part.all { it.isLetterOrDigit() || it == '_' }
+        }
+    }
+
+    private fun isLikelyUserWebUrl(uri: Uri): Boolean {
+        val scheme = uri.scheme ?: return false
+        if (scheme != "http" && scheme != "https") return false
+
+        val host = uri.host?.lowercase() ?: return false
+        if (XiaomiPackageList.isXiaomiBrowser(host) || XiaomiPackageList.isXiaomiMarket(host)) {
+            return false
+        }
+
+        val url = uri.toString().lowercase()
+        val path = uri.path?.lowercase().orEmpty()
+        val imageOrAsset = path.endsWith(".png") ||
+            path.endsWith(".jpg") ||
+            path.endsWith(".jpeg") ||
+            path.endsWith(".webp") ||
+            path.endsWith(".gif") ||
+            path.endsWith(".svg") ||
+            path.endsWith(".ico")
+        if (imageOrAsset) return false
+
+        val xiaomiAssetHost = host.endsWith("mi-fds.com") ||
+            host.endsWith("xiaomi.com") && (
+                host.contains("icon") ||
+                    host.contains("resource") ||
+                    host.contains("cdn")
+                )
+        if (xiaomiAssetHost && (
+                url.contains("icon") ||
+                    url.contains("resource") ||
+                    url.contains("logo") ||
+                    url.contains("asset")
+                )) {
+            return false
+        }
+
+        return true
+    }
+
+    private fun isXiaomiBrowserDownloadUri(uri: Uri?): Boolean {
+        if (uri == null) return false
+        val scheme = uri.scheme ?: return false
+        if (scheme != "market" && !scheme.startsWith("mi")) return false
+        return XiaomiPackageList.isXiaomiBrowser(uri.getQueryParameter("id"))
+    }
+
     private fun isRouterAdminUrl(uri: Uri): Boolean {
         val host = uri.host?.lowercase() ?: return false
         if (host == "miwifi.com" || host.endsWith(".miwifi.com")) return true
@@ -582,10 +707,22 @@ object IntentInterceptor {
             (nums[0] == 172 && nums[1] in 16..31)
     }
 
-    private fun getRecentMiShareUrl(): Uri? {
-        val url = lastMiShareUrl ?: return null
-        val age = System.currentTimeMillis() - lastMiShareUrlAt
-        return if (age in 0..MI_SHARE_URL_CACHE_MS) url else null
+    private fun rememberWebUrl(url: Uri, source: String) {
+        lastXiaomiSourceUrl = url
+        lastXiaomiSourceUrlAt = System.currentTimeMillis()
+        lastXiaomiSourceLabel = source
+        Log.i(TAG, "Cached Xiaomi source URL from $source: $url")
+    }
+
+    private fun getRecentXiaomiSourceUrl(): Uri? {
+        val url = lastXiaomiSourceUrl ?: return null
+        val age = System.currentTimeMillis() - lastXiaomiSourceUrlAt
+        return if (age in 0..XIAOMI_SOURCE_URL_CACHE_MS) {
+            Log.d(TAG, "Using cached Xiaomi source URL from $lastXiaomiSourceLabel, age=${age}ms")
+            url
+        } else {
+            null
+        }
     }
 
     private fun extractWebUriFromIntent(intent: Intent): Uri? {
@@ -617,11 +754,49 @@ object IntentInterceptor {
         return null
     }
 
+    private fun extractLikelyWebUriFromIntent(intent: Intent): Uri? {
+        extractWebUri(intent.data?.toString())?.takeIf { isLikelyUserWebUrl(it) }?.let { return it }
+
+        val knownExtras = arrayOf(
+            Intent.EXTRA_TEXT,
+            Intent.EXTRA_HTML_TEXT,
+            Intent.EXTRA_REFERRER_NAME,
+            "android.intent.extra.REFERRER",
+            "url",
+            "uri",
+            "link",
+            "target_url",
+            "referrer",
+            "text",
+            "share_url",
+            "content",
+            "android.intent.extra.TEXT"
+        )
+        for (key in knownExtras) {
+            val value = runCatching { intent.extras?.get(key) }.getOrNull()
+            extractLikelyWebUriFromValue(value, newVisitedSet())?.let { return it }
+        }
+
+        extractLikelyWebUriFromBundle(intent.extras)?.let { return it }
+        extractLikelyWebUriFromClipData(intent.clipData)?.let { return it }
+
+        return null
+    }
+
     private fun extractWebUriFromBundle(bundle: Bundle?): Uri? {
         if (bundle == null) return null
         for (key in bundle.keySet()) {
             val value = runCatching { bundle.get(key) }.getOrNull()
             extractWebUriFromValue(value, newVisitedSet())?.let { return it }
+        }
+        return null
+    }
+
+    private fun extractLikelyWebUriFromBundle(bundle: Bundle?): Uri? {
+        if (bundle == null) return null
+        for (key in bundle.keySet()) {
+            val value = runCatching { bundle.get(key) }.getOrNull()
+            extractLikelyWebUriFromValue(value, newVisitedSet())?.let { return it }
         }
         return null
     }
@@ -633,6 +808,17 @@ object IntentInterceptor {
             extractWebUri(item.uri?.toString())?.let { return it }
             extractWebUri(item.text?.toString())?.let { return it }
             item.intent?.let { extractWebUriFromIntent(it)?.let { uri -> return uri } }
+        }
+        return null
+    }
+
+    private fun extractLikelyWebUriFromClipData(clipData: ClipData?): Uri? {
+        if (clipData == null) return null
+        for (i in 0 until clipData.itemCount) {
+            val item = clipData.getItemAt(i) ?: continue
+            extractWebUri(item.uri?.toString())?.takeIf { isLikelyUserWebUrl(it) }?.let { return it }
+            extractWebUri(item.text?.toString())?.takeIf { isLikelyUserWebUrl(it) }?.let { return it }
+            item.intent?.let { extractLikelyWebUriFromIntent(it)?.let { uri -> return uri } }
         }
         return null
     }
@@ -656,6 +842,28 @@ object IntentInterceptor {
             }.firstOrNull()
             else -> extractWebUri(value.toString())
                 ?: extractWebUriFromObjectFields(value, visited, depth)
+        }
+    }
+
+    private fun extractLikelyWebUriFromValue(
+        value: Any?,
+        visited: MutableSet<Any>,
+        depth: Int = 0
+    ): Uri? {
+        return when (value) {
+            null -> null
+            is Uri -> extractWebUri(value.toString())?.takeIf { isLikelyUserWebUrl(it) }
+            is Intent -> extractLikelyWebUriFromIntent(value)
+            is Bundle -> extractLikelyWebUriFromBundle(value)
+            is CharSequence -> extractWebUri(value.toString())?.takeIf { isLikelyUserWebUrl(it) }
+            is Array<*> -> value.asSequence().mapNotNull {
+                extractLikelyWebUriFromValue(it, visited, depth + 1)
+            }.firstOrNull()
+            is Iterable<*> -> value.asSequence().mapNotNull {
+                extractLikelyWebUriFromValue(it, visited, depth + 1)
+            }.firstOrNull()
+            else -> extractWebUri(value.toString())?.takeIf { isLikelyUserWebUrl(it) }
+                ?: extractLikelyWebUriFromObjectFields(value, visited, depth)
         }
     }
 
@@ -695,6 +903,42 @@ object IntentInterceptor {
         return null
     }
 
+    private fun extractLikelyWebUriFromObjectFields(
+        value: Any,
+        visited: MutableSet<Any>,
+        depth: Int
+    ): Uri? {
+        if (depth >= MAX_OBJECT_SCAN_DEPTH) return null
+        if (!visited.add(value)) return null
+
+        var clazz: Class<*>? = value.javaClass
+        val className = clazz?.name ?: return null
+        if (className.startsWith("java.") ||
+            className.startsWith("kotlin.") ||
+            className.startsWith("android.os.")) {
+            return null
+        }
+
+        while (clazz != null && clazz != Any::class.java) {
+            for (field in clazz.declaredFields) {
+                if (Modifier.isStatic(field.modifiers)) continue
+                val ownerClass = clazz
+                val fieldValue = runCatching {
+                    field.isAccessible = true
+                    field.get(value)
+                }.getOrNull() ?: continue
+
+                extractLikelyWebUriFromValue(fieldValue, visited, depth + 1)?.let {
+                    Log.i(TAG, "Recovered likely user URL from object field ${ownerClass.name}.${field.name}: $it")
+                    return it
+                }
+            }
+            clazz = clazz.superclass
+        }
+
+        return null
+    }
+
     private fun extractWebUri(raw: String?): Uri? {
         if (raw.isNullOrBlank()) return null
 
@@ -704,8 +948,16 @@ object IntentInterceptor {
         }
 
         val decoded = runCatching { Uri.decode(direct) }.getOrDefault(direct)
-        val match = Regex("""https?://[^\s"'<>]+""").find(decoded) ?: return null
-        return Uri.parse(match.value.trimEnd(')', ']', '}', ',', '.', ';'))
+        Regex("""https?://[^\s"'<>]+""").find(decoded)?.let { match ->
+            return Uri.parse(match.value.trimEnd(')', ']', '}', ',', '.', ';'))
+        }
+
+        val domainMatch = Regex("""(?i)\b(?:www\.)?[a-z0-9][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)+\b(?:/[^\s"'<>]*)?""")
+            .findAll(decoded)
+            .map { it.value.trimEnd(')', ']', '}', ',', '.', ';') }
+            .firstOrNull { looksLikeDomain(it) }
+
+        return domainMatch?.let { Uri.parse(normalizeUrl(it)) }
     }
 
     private fun newVisitedSet(): MutableSet<Any> {

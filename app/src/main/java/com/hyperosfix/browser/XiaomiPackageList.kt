@@ -30,6 +30,7 @@ object XiaomiPackageList {
     const val SECURITY_CENTER = "com.miui.securitycenter"
     const val SYSTEM_UI = "com.android.systemui"
     const val SETTINGS = "com.android.settings"
+    const val CONTENT_CATCHER = "com.miui.contentcatcher"
 
     // ── HyperOS AI / voice assist apps (discovered from reference module) ─
     /** Xiaomi HyperAI Engine — handles clipboard URL recognition, screen recognition */
@@ -37,6 +38,9 @@ object XiaomiPackageList {
 
     /** XiaoAi / Super XiaoAi voice assistant — opens URLs via voice commands */
     const val VOICE_ASSIST = "com.miui.voiceassist"
+
+    /** Xiaomi AI vision assistant — may host screen recognition on newer HyperOS builds */
+    const val AI_ASSIST_VISION = "com.xiaomi.aiasst.vision"
 
     // ── MIUI-specific class names (for per-process hooks) ────────────────
     // com.xiaomi.aicr — SmartPasswordUtils
@@ -60,6 +64,40 @@ object XiaomiPackageList {
     )
 
     /**
+     * XiaoAi / AI Engine classes that may receive recognized screen text or
+     * URL strings before Xiaomi rewrites the launch into a browser/market
+     * intent. These names are intentionally candidates: missing classes are
+     * expected across MIUI / HyperOS versions and are ignored by the hooker.
+     */
+    val URL_SOURCE_CLASS_CANDIDATES = listOf(
+        // Xiaomi AI Engine / screen recognition / clipboard recognition
+        "com.xiaomi.aicr.copydirect.util.SmartPasswordUtils",
+        "com.xiaomi.aicr.copydirect.CopyDirectActivity",
+        "com.xiaomi.aicr.copydirect.CopyDirectService",
+        "com.xiaomi.aicr.screen.ScreenRecognitionActivity",
+        "com.xiaomi.aicr.screen.ScreenRecognitionService",
+        "com.xiaomi.aicr.smartaction.SmartActionActivity",
+        "com.xiaomi.aicr.smartaction.SmartActionService",
+        // Xiaomi AI vision assistant
+        "com.xiaomi.aiasst.vision.ScreenRecognitionActivity",
+        "com.xiaomi.aiasst.vision.ScreenRecognitionService",
+        "com.xiaomi.aiasst.vision.SmartActionHandler",
+        "com.xiaomi.aiasst.vision.VisionRecognitionManager",
+        // XiaoAi / Super XiaoAi utility and screen-understanding layers
+        "com.miui.voiceassist.ui.ScreenRecognitionActivity",
+        "com.miui.voiceassist.service.ScreenRecognitionService",
+        "com.xiaomi.voiceassistant.screenrecognition.ScreenRecognitionActivity",
+        "com.xiaomi.voiceassistant.screenrecognition.ScreenRecognitionPresenter",
+        "com.xiaomi.voiceassistant.screenrecognition.ScreenRecognitionService",
+        "com.xiaomi.voiceassistant.utils.b2",
+        "com.xiaomi.voiceassistant.utils.f2",
+        "com.xiaomi.voiceassistant.smartaction.SmartActionHandler",
+        "com.xiaomi.voiceassistant.screen.ScreenRecognitionManager",
+        // Obfuscated candidates observed on some HyperOS builds
+        "i26",
+    )
+
+    /**
      * All Xiaomi browser package names to check against.
      * Add new names discovered in future HyperOS builds here.
      */
@@ -80,8 +118,10 @@ object XiaomiPackageList {
         MI_MIRROR,
         SECURITY_CENTER,
         SYSTEM_UI,
+        CONTENT_CATCHER,
         AI_ENGINE,
         VOICE_ASSIST,
+        AI_ASSIST_VISION,
         "com.miui.home",
         "com.miui.notes",
         "com.miui.gallery",

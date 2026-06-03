@@ -25,5 +25,9 @@
         <item>com.xiaomi.aicr</item>
         <!-- Super XiaoAi / voice assistant — screen recognition URLs -->
         <item>com.miui.voiceassist</item>
+        <!-- MIUI content catcher — participates in screen recognition -->
+        <item>com.miui.contentcatcher</item>
+        <!-- Xiaomi AI vision assistant — screen recognition on some HyperOS builds -->
+        <item>com.xiaomi.aiasst.vision</item>
     </string-array>
 </resources>

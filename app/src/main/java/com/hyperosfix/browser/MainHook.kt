@@ -47,6 +47,12 @@ class MainHook : IXposedHookLoadPackage {
             hookXiaomiVoiceAssist(lpparam)
         }
 
+        if (pkg == XiaomiPackageList.AI_ENGINE ||
+            pkg == XiaomiPackageList.VOICE_ASSIST ||
+            pkg == XiaomiPackageList.AI_ASSIST_VISION) {
+            hookXiaomiUrlSourceMethods(lpparam, pkg)
+        }
+
         // ── Mi Share specific hooks ──────────────────────────────────────
         if (pkg == XiaomiPackageList.MI_SHARE) {
             hookMiShareService(lpparam)
@@ -571,7 +577,7 @@ class MainHook : IXposedHookLoadPackage {
                                 val ctx = param.args[0] as? Context ?: return
                                 val browser = DefaultBrowserResolver.resolveDefaultBrowser(ctx)
 
-                                val recoveredUrl = IntentInterceptor.recoverUrl(intent)
+                                val recoveredUrl = IntentInterceptor.recoverUrlForRedirect(intent)
                                 if (browser != null && recoveredUrl != null) {
                                     val replacement = Intent(Intent.ACTION_VIEW, recoveredUrl).apply {
                                         addCategory(Intent.CATEGORY_BROWSABLE)
@@ -579,10 +585,10 @@ class MainHook : IXposedHookLoadPackage {
                                         if (browser.isDefault) {
                                             setPackage(browser.packageName)
                                         }
-                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                     }
                                     // Copy original flags
                                     replacement.flags = intent.flags
+                                    replacement.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
                                     param.args[2] = replacement
                                     Log.i(TAG, "[PendingIntent] Replaced market:// intent with recovered URL: $recoveredUrl")
@@ -646,6 +652,69 @@ class MainHook : IXposedHookLoadPackage {
         } catch (t: Throwable) {
             Log.w(TAG, "[MiShare] Failed to hook onStartCommand: ${t.javaClass.simpleName} — ${t.message}")
         }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // Per-app hooks: cache URLs seen by XiaoAi / AI Engine before rewrites
+    // ══════════════════════════════════════════════════════════════════════
+
+    /**
+     * XiaoAi Screen Recognition and Xiaomi AI Engine sometimes inspect the
+     * screen URL in app-layer objects before later launching a browser or
+     * Market intent. Hook methods that receive Intent/String/Uri-like args and
+     * cache only real http/https URLs; this does not change method behavior.
+     */
+    private fun hookXiaomiUrlSourceMethods(
+        lpparam: XC_LoadPackage.LoadPackageParam,
+        sourcePackage: String
+    ) {
+        val cl = lpparam.classLoader
+        var hookedCount = 0
+        val maxHooks = 80
+
+        for (className in XiaomiPackageList.URL_SOURCE_CLASS_CANDIDATES) {
+            if (hookedCount >= maxHooks) break
+
+            val clazz = try {
+                XposedHelpers.findClass(className, cl)
+            } catch (_: Throwable) {
+                continue
+            }
+
+            for (method in clazz.declaredMethods) {
+                if (hookedCount >= maxHooks) break
+
+                val params = method.parameterTypes
+                val hasInterestingArg = params.any { type ->
+                    type == Intent::class.java ||
+                        type == String::class.java ||
+                        type == Uri::class.java ||
+                        type == Bundle::class.java ||
+                        CharSequence::class.java.isAssignableFrom(type)
+                }
+                if (!hasInterestingArg) continue
+
+                try {
+                    XposedBridge.hookMethod(method, object : XC_MethodHook() {
+                        override fun beforeHookedMethod(param: MethodHookParam) {
+                            for (arg in param.args) {
+                                IntentInterceptor.rememberWebUrlFromValue(
+                                    arg,
+                                    "$sourcePackage:${clazz.name}.${method.name}"
+                                )
+                            }
+                        }
+                    })
+                    hookedCount++
+                    Log.i(TAG, "[URL-Source] Hooked ${clazz.name}.${method.name} for $sourcePackage")
+                } catch (t: Throwable) {
+                    Log.w(TAG, "[URL-Source] Failed ${clazz.name}.${method.name}: ${t.javaClass.simpleName}")
+                }
+            }
+        }
+
+        Log.i(TAG, "[URL-Source] Hooked $hookedCount URL cache methods for $sourcePackage")
+        XposedBridge.log("[$TAG] URL-Source: hooked $hookedCount methods for $sourcePackage")
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -823,6 +892,11 @@ class MainHook : IXposedHookLoadPackage {
                                 if (arg is Intent) {
                                     val pkg = arg.`package`
                                     val comp = arg.component
+                                    rewriteXiaomiBrowserDownloadIntent(
+                                        arg,
+                                        android.app.AndroidAppHelper.currentApplication(),
+                                        "[VoiceAssist] ${method.name}"
+                                    )
 
                                     if (XiaomiPackageList.isXiaomiBrowser(pkg) ||
                                         (comp != null && XiaomiPackageList.isXiaomiBrowser(comp.packageName)) ||
@@ -859,6 +933,13 @@ class MainHook : IXposedHookLoadPackage {
                         override fun beforeHookedMethod(param: MethodHookParam) {
                             for (arg in param.args) {
                                 if (arg is Intent) {
+                                    rewriteXiaomiBrowserDownloadIntent(
+                                        arg,
+                                        param.args.filterIsInstance<Context>().firstOrNull()
+                                            ?: android.app.AndroidAppHelper.currentApplication(),
+                                        "[VoiceAssist] ${method.name}"
+                                    )
+
                                     val data = arg.data
                                     if (data != null) {
                                         val scheme = data.scheme
@@ -886,5 +967,39 @@ class MainHook : IXposedHookLoadPackage {
             Log.e(TAG, "[VoiceAssist] Failed to hook methods in $className: ${t.javaClass.simpleName} — ${t.message}", t)
             XposedBridge.log("[$TAG] VoiceAssist hook failed: $className — ${t.javaClass.simpleName}: ${t.message}")
         }
+    }
+
+    private fun rewriteXiaomiBrowserDownloadIntent(
+        intent: Intent,
+        context: Context?,
+        source: String
+    ): Boolean {
+        val data = intent.data ?: return false
+        val scheme = data.scheme ?: return false
+        if (scheme != "market" && !scheme.startsWith("mi")) return false
+
+        val marketId = data.getQueryParameter("id")
+        if (!XiaomiPackageList.isXiaomiBrowser(marketId)) return false
+
+        val recovered = IntentInterceptor.recoverUrlForRedirect(intent)
+        if (recovered == null) {
+            Log.w(TAG, "$source saw Xiaomi Browser download intent but no original URL was cached: $data")
+            return false
+        }
+
+        intent.action = Intent.ACTION_VIEW
+        intent.data = recovered
+        intent.setPackage(null)
+        intent.component = null
+        intent.addCategory(Intent.CATEGORY_BROWSABLE)
+        intent.addCategory(Intent.CATEGORY_DEFAULT)
+
+        val browser = context?.let { DefaultBrowserResolver.resolveDefaultBrowser(it) }
+        if (browser?.isDefault == true) {
+            intent.setPackage(browser.packageName)
+        }
+
+        Log.i(TAG, "$source rewrote Xiaomi Browser download intent to: $recovered")
+        return true
     }
 }
