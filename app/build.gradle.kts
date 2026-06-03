@@ -1,6 +1,17 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+}
+
+// Read release signing credentials from signing/release-keystore.properties.
+// The file is .gitignore'd and must NEVER be committed.
+val keystorePropsFile = rootProject.file("signing/release-keystore.properties")
+val keystoreProps = Properties().apply {
+    if (keystorePropsFile.exists()) {
+        load(keystorePropsFile.inputStream())
+    }
 }
 
 android {
@@ -15,6 +26,17 @@ android {
         versionName = "1.2"
     }
 
+    signingConfigs {
+        create("release") {
+            if (keystorePropsFile.exists()) {
+                storeFile = file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -22,7 +44,19 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            if (keystorePropsFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+                println("[Fxxk-MiBrowser] Release build will be signed with: " +
+                    keystoreProps.getProperty("storeFile"))
+            } else {
+                println("[Fxxk-MiBrowser] WARNING: signing/release-keystore.properties not found — " +
+                    "release APK will be UNSIGNED")
+            }
         }
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     compileOptions {

@@ -9,6 +9,7 @@ import android.content.pm.ResolveInfo
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
+import com.hyperosfix.browser.BuildConfig
 import de.robv.android.xposed.IXposedHookLoadPackage
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedBridge
@@ -27,7 +28,7 @@ class MainHook : IXposedHookLoadPackage {
         private const val TAG = "HyperOSBrowserFix_Main"
 
         /** Set to true to log EVERY startActivity call (very verbose) */
-        private const val DIAGNOSTIC_LOG_ALL = true
+        private val DIAGNOSTIC_LOG_ALL = BuildConfig.DEBUG
     }
 
     override fun handleLoadPackage(lpparam: XC_LoadPackage.LoadPackageParam) {
