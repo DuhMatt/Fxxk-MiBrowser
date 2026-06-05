@@ -19,6 +19,7 @@ signing/
 
 .DS_Store
 .qwen/
+AGENTS.md
 .idea/
 *.iml
 
