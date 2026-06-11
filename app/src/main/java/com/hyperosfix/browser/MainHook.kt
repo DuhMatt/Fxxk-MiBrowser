@@ -698,7 +698,9 @@ class MainHook : IXposedHookLoadPackage {
                 try {
                     XposedBridge.hookMethod(method, object : XC_MethodHook() {
                         override fun beforeHookedMethod(param: MethodHookParam) {
+                            logUrlSourceArgsIfUseful(sourcePackage, clazz.name, method.name, param.args)
                             for (arg in param.args) {
+                                if (!isUrlCarrierArg(arg)) continue
                                 IntentInterceptor.rememberWebUrlFromValue(
                                     arg,
                                     "$sourcePackage:${clazz.name}.${method.name}"
@@ -716,6 +718,58 @@ class MainHook : IXposedHookLoadPackage {
 
         Log.i(TAG, "[URL-Source] Hooked $hookedCount URL cache methods for $sourcePackage")
         XposedBridge.log("[$TAG] URL-Source: hooked $hookedCount methods for $sourcePackage")
+    }
+
+    private fun isUrlCarrierArg(arg: Any?): Boolean {
+        return arg is Intent ||
+            arg is String ||
+            arg is Uri ||
+            arg is Bundle ||
+            arg is CharSequence
+    }
+
+    private fun logUrlSourceArgsIfUseful(
+        sourcePackage: String,
+        className: String,
+        methodName: String,
+        args: Array<Any?>
+    ) {
+        if (!BuildConfig.DEBUG) return
+
+        if (sourcePackage != XiaomiPackageList.VOICE_ASSIST &&
+            sourcePackage != XiaomiPackageList.AI_ASSIST_VISION) {
+            return
+        }
+
+        val interestingMethod = methodName in setOf(
+            "openInBrowser",
+            "convertUrlToIntent",
+            "parseIntent",
+            "sendUriOrAndroidIntent",
+            "sendIntent",
+            "sendIntentByClick",
+            "startActivity",
+            "startActivitySafely",
+            "startActivityWithIntent",
+            "setDeepLinkIntent",
+            "innerDeepLink",
+            "innerScheme",
+        )
+        if (!interestingMethod) return
+
+        val summary = args.mapIndexedNotNull { index, arg ->
+            when (arg) {
+                null -> null
+                is Intent -> "#$index Intent{action=${arg.action}, data=${arg.data}, pkg=${arg.`package`}, comp=${arg.component}}"
+                is Uri -> "#$index Uri{$arg}"
+                is CharSequence -> "#$index ${arg.javaClass.simpleName}{${arg.toString().take(240)}}"
+                is Bundle -> "#$index Bundle{keys=${arg.keySet().joinToString(limit = 12)}}"
+                else -> null
+            }
+        }
+        if (summary.isNotEmpty()) {
+            Log.i(TAG, "[URL-Source-Args] $sourcePackage:$className.$methodName ${summary.joinToString(" | ")}")
+        }
     }
 
     // ══════════════════════════════════════════════════════════════════════

@@ -1,6 +1,26 @@
 # Release Notes
 
-## v1.2 (current)
+## v1.2.1 (current)
+
+### 中文
+
+v1.2.1 的新增内容：
+
+- 修复小爱识屏 / 超级小爱中 `mibrowser://...web_url=...` 和 `intent://...web_url=...#Intent` 链路无法恢复真实网页的问题。
+- 修复 URL 恢复时误扫 Android 框架对象，导致 `base.apk`、主题资源 ID 或包名片段被误当作网页打开的问题。
+- 修复 `www.baidu.com` 这类三段式域名被误判为 Android 包名而被过滤的问题。
+- 当无法恢复真实 URL 时，不再用空白 `https://` 打开默认浏览器，避免出现无意义空白页。
+
+### English
+
+New in v1.2.1:
+
+- Fix XiaoAi / Super XiaoAi links wrapped as `mibrowser://...web_url=...` or `intent://...web_url=...#Intent` not being recovered correctly.
+- Prevent URL recovery from scanning Android framework objects and accidentally opening values such as `base.apk`, theme resource IDs, or package-name fragments.
+- Fix `www.baidu.com`-style three-part domains being mistaken for Android package names and filtered out.
+- Stop opening a blank `https://` page when the original URL cannot be recovered.
+
+## v1.2
 
 ### 中文
 

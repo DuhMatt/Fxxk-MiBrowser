@@ -107,12 +107,8 @@ object IntentInterceptor {
 
                 if (needsFallback) {
                     if (isXiaomiBrowserDownloadUri(intent.data)) {
-                        val fallback = DefaultBrowserResolver.buildOpenBrowserIntent(browser.packageName)
-                        fallback.flags = cleaned.flags
-                        fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        Log.w(TAG, "URL recovery failed; opening default browser instead of Xiaomi Market")
+                        Log.w(TAG, "URL recovery failed; canceling Xiaomi Market download-page intent")
                         param.result = null
-                        context.startActivity(fallback, options)
                     } else {
                         Log.w(TAG, "URL recovery failed; keeping original intent instead of opening https://")
                     }
@@ -190,12 +186,8 @@ object IntentInterceptor {
 
                 if (needsFallback) {
                     if (isXiaomiBrowserDownloadUri(intent.data)) {
-                        val fallback = DefaultBrowserResolver.buildOpenBrowserIntent(browser.packageName)
-                        fallback.flags = cleaned.flags
-                        fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        Log.w(TAG, "URL recovery failed (Instr); opening default browser instead of Xiaomi Market")
+                        Log.w(TAG, "URL recovery failed (Instr); canceling Xiaomi Market download-page intent")
                         param.result = null
-                        context.startActivity(fallback)
                     } else {
                         Log.w(TAG, "URL recovery failed (Instr); keeping original intent instead of opening https://")
                     }
@@ -500,7 +492,7 @@ object IntentInterceptor {
         val data: Uri = intent.data ?: return null
 
         // Priority 1: Known key names
-        val targetKeys = arrayOf("url", "query", "q", "link", "text")
+        val targetKeys = arrayOf("url", "web_url", "query", "q", "link", "target_url", "text")
         for (key in targetKeys) {
             try {
                 val value = data.getQueryParameter(key)
@@ -556,7 +548,7 @@ object IntentInterceptor {
         val data: Uri = intent.data ?: return null
 
         // Try query parameters
-        val targetKeys = arrayOf("url", "link", "target_url", "q")
+        val targetKeys = arrayOf("url", "web_url", "link", "target_url", "q")
         for (key in targetKeys) {
             try {
                 val value = data.getQueryParameter(key)
@@ -600,15 +592,33 @@ object IntentInterceptor {
         if (value.length <= 4 || value.contains(" ")) return false
         if (value.any { it.isUpperCase() }) return false
         if (!value.contains(".")) return false
+        if (value.startsWith("0x")) return false
+        if (looksLikeLocalArtifactPath(value)) return false
         if (value.startsWith("android.intent.")) return false
+        if (value.contains("com.miui.") || value.contains("com.xiaomi.") || value.contains("com.android.")) {
+            return false
+        }
         if (XiaomiPackageList.isXiaomiBrowser(value) || XiaomiPackageList.isXiaomiMarket(value)) return false
-        if (isAndroidPackageName(value)) return false
+        if (looksLikeAndroidPackageInsteadOfDomain(value)) return false
 
         val host = value.substringBefore('/').substringBefore('?').substringBefore('#')
         val labels = host.split('.')
         if (labels.size < 2) return false
         val tld = labels.last()
         return tld.length in 2..24 && tld.all { it.isLetter() }
+    }
+
+    private fun looksLikeLocalArtifactPath(value: String): Boolean {
+        val lower = value.lowercase()
+        val artifactExtensions = arrayOf(
+            ".apk", ".apks", ".xapk", ".dex", ".jar", ".so", ".odex", ".vdex", ".art"
+        )
+        return artifactExtensions.any { extension ->
+            lower == extension.removePrefix(".") ||
+                lower.endsWith(extension) ||
+                lower.contains("$extension!") ||
+                lower.contains("$extension/")
+        }
     }
 
     private fun isAndroidPackageName(value: String): Boolean {
@@ -619,6 +629,20 @@ object IntentInterceptor {
                 part.first().isLetter() &&
                 part.all { it.isLetterOrDigit() || it == '_' }
         }
+    }
+
+    private fun looksLikeAndroidPackageInsteadOfDomain(value: String): Boolean {
+        val lower = value.lowercase()
+        if (lower.startsWith("www.")) return false
+        if (!isAndroidPackageName(lower)) return false
+
+        return lower.startsWith("android.") ||
+            lower.startsWith("androidx.") ||
+            lower.startsWith("com.") ||
+            lower.startsWith("org.lsposed.") ||
+            lower.startsWith("de.robv.android.") ||
+            lower.startsWith("me.weishu.") ||
+            lower.startsWith("li.songe.")
     }
 
     private fun isLikelyUserWebUrl(uri: Uri): Boolean {
@@ -877,13 +901,13 @@ object IntentInterceptor {
 
         var clazz: Class<*>? = value.javaClass
         val className = clazz?.name ?: return null
-        if (className.startsWith("java.") ||
-            className.startsWith("kotlin.") ||
-            className.startsWith("android.os.")) {
+        if (shouldSkipObjectFieldScan(className)) {
             return null
         }
 
         while (clazz != null && clazz != Any::class.java) {
+            val ownerName = clazz.name
+            if (shouldSkipObjectFieldScan(ownerName)) break
             for (field in clazz.declaredFields) {
                 if (Modifier.isStatic(field.modifiers)) continue
                 val ownerClass = clazz
@@ -913,13 +937,13 @@ object IntentInterceptor {
 
         var clazz: Class<*>? = value.javaClass
         val className = clazz?.name ?: return null
-        if (className.startsWith("java.") ||
-            className.startsWith("kotlin.") ||
-            className.startsWith("android.os.")) {
+        if (shouldSkipObjectFieldScan(className)) {
             return null
         }
 
         while (clazz != null && clazz != Any::class.java) {
+            val ownerName = clazz.name
+            if (shouldSkipObjectFieldScan(ownerName)) break
             for (field in clazz.declaredFields) {
                 if (Modifier.isStatic(field.modifiers)) continue
                 val ownerClass = clazz
@@ -939,6 +963,17 @@ object IntentInterceptor {
         return null
     }
 
+    private fun shouldSkipObjectFieldScan(className: String): Boolean {
+        return className.startsWith("java.") ||
+            className.startsWith("kotlin.") ||
+            className.startsWith("android.") ||
+            className.startsWith("androidx.") ||
+            className.startsWith("dalvik.") ||
+            className.startsWith("com.android.") ||
+            className == "java.lang.ClassLoader" ||
+            className.endsWith("ClassLoader")
+    }
+
     private fun extractWebUri(raw: String?): Uri? {
         if (raw.isNullOrBlank()) return null
 
@@ -948,16 +983,36 @@ object IntentInterceptor {
         }
 
         val decoded = runCatching { Uri.decode(direct) }.getOrDefault(direct)
+        extractWebUriFromKnownParameter(decoded)?.let { return it }
+
         Regex("""https?://[^\s"'<>]+""").find(decoded)?.let { match ->
             return Uri.parse(match.value.trimEnd(')', ']', '}', ',', '.', ';'))
         }
 
-        val domainMatch = Regex("""(?i)\b(?:www\.)?[a-z0-9][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)+\b(?:/[^\s"'<>]*)?""")
+        val domainMatch = Regex("""(?i)\b(?:www\.)?[a-z0-9][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)+\b(?:/[^\s"'<>#;]*)?""")
             .findAll(decoded)
             .map { it.value.trimEnd(')', ']', '}', ',', '.', ';') }
             .firstOrNull { looksLikeDomain(it) }
 
         return domainMatch?.let { Uri.parse(normalizeUrl(it)) }
+    }
+
+    private fun extractWebUriFromKnownParameter(decoded: String): Uri? {
+        val paramPattern = Regex("""(?i)(?:^|[?&#;])(?:url|web_url|link|target_url|q)=([^&#;\s"'<>]+)""")
+        for (match in paramPattern.findAll(decoded)) {
+            val value = match.groupValues.getOrNull(1)?.trim().orEmpty()
+            if (value.isEmpty()) continue
+            val unescaped = runCatching { Uri.decode(value) }.getOrDefault(value)
+            val candidate = when {
+                unescaped.startsWith("http://") || unescaped.startsWith("https://") -> unescaped
+                looksLikeDomain(unescaped) -> normalizeUrl(unescaped)
+                else -> null
+            } ?: continue
+
+            val uri = Uri.parse(candidate)
+            if (isLikelyUserWebUrl(uri)) return uri
+        }
+        return null
     }
 
     private fun newVisitedSet(): MutableSet<Any> {
