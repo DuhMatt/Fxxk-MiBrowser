@@ -4,21 +4,25 @@
 
 ### 中文
 
-v1.2.1 的新增内容：
+v1.2.1 是一次小修复，主要补齐小爱识屏 / 超级小爱在新版 HyperOS 上的链接格式。
 
-- 修复小爱识屏 / 超级小爱中 `mibrowser://...web_url=...` 和 `intent://...web_url=...#Intent` 链路无法恢复真实网页的问题。
-- 修复 URL 恢复时误扫 Android 框架对象，导致 `base.apk`、主题资源 ID 或包名片段被误当作网页打开的问题。
-- 修复 `www.baidu.com` 这类三段式域名被误判为 Android 包名而被过滤的问题。
-- 当无法恢复真实 URL 时，不再用空白 `https://` 打开默认浏览器，避免出现无意义空白页。
+- 支持从小爱识屏的 `mibrowser://...web_url=...` 和 `intent://...web_url=...#Intent` 中恢复真实网页链接，例如 `web_url=www.baidu.com`。
+- 修复 URL 恢复时误扫 Android 框架对象的问题。之前在部分设备上可能会把 `base.apk`、主题资源 ID 或包名片段误当成网页打开。
+- 修复 `www.baidu.com` 这类三段式域名被误判为 Android 包名，导致真实链接被过滤的问题。
+- 如果无法恢复真实 URL，模块不再打开空白 `https://` 页面，也不会继续跳到小米浏览器下载页。
+
+已回归测试小爱识屏、互传 URL 和默认浏览器跳转。模块仍然只处理网页 Intent，不会硬编码某一个浏览器。
 
 ### English
 
-New in v1.2.1:
+v1.2.1 is a small bugfix release for the link format used by XiaoAi / Super XiaoAi on newer HyperOS builds.
 
-- Fix XiaoAi / Super XiaoAi links wrapped as `mibrowser://...web_url=...` or `intent://...web_url=...#Intent` not being recovered correctly.
-- Prevent URL recovery from scanning Android framework objects and accidentally opening values such as `base.apk`, theme resource IDs, or package-name fragments.
-- Fix `www.baidu.com`-style three-part domains being mistaken for Android package names and filtered out.
-- Stop opening a blank `https://` page when the original URL cannot be recovered.
+- Recover real web links from XiaoAi payloads such as `mibrowser://...web_url=...` and `intent://...web_url=...#Intent`, including cases like `web_url=www.baidu.com`.
+- Stop URL recovery from walking through Android framework objects. On some devices this could turn `base.apk`, theme resource IDs, or package-name fragments into bogus browser URLs.
+- Fix three-part domains such as `www.baidu.com` being mistaken for Android package names and filtered out.
+- If the original URL cannot be recovered, the module no longer opens a blank `https://` page or falls through to Xiaomi Browser's app-store download page.
+
+XiaoAi screen recognition, Mi Share URL handling, and default-browser dispatch were retested. The module still only handles web Intents and does not hard-code a browser package.
 
 ## v1.2
 
