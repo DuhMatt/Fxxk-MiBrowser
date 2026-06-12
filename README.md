@@ -98,7 +98,7 @@ mimarket://details?id=com.android.browser
 - 设置 (`com.android.settings`)，用于 Wi-Fi 详情页的“小米路由”入口
 - HyperAI Engine (`com.xiaomi.aicr`)，用于剪贴板识别和部分识屏链路
 - 超级小爱 / 小爱同学 (`com.miui.voiceassist`)，用于小爱识屏
-- AI 视觉助手 (`com.xiaomi.aiasst.vision`)，部分 HyperOS 版本可能使用
+- 翻译 (`com.xiaomi.aiasst.vision`)，部分 HyperOS 版本可能使用
 
 ### 安装
 
