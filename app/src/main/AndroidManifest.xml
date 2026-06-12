@@ -6,6 +6,7 @@
     <application
         android:allowBackup="false"
         android:label="Fxxk-MiBrowser"
+        android:description="@string/xposed_description"
         android:supportsRtl="true">
 
         <!-- LSPosed / Xposed module marker -->
