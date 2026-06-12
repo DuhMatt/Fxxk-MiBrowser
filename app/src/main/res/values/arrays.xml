@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Default recommended scopes for LSPosed.
-         User can adjust in LSPosed Manager after installation. -->
+         Aggressive test profile: keep the known URL rewrite paths and
+         XiaoAi screen-recognition participants, drop broad diagnostic scopes. -->
     <string-array name="xposed_scope">
         <!-- System Framework — catches all processes -->
         <item>android</item>
@@ -9,16 +10,8 @@
         <item>com.miui.mishare.connectivity</item>
         <!-- Xiaomi App Store (download page redirects) -->
         <item>com.xiaomi.market</item>
-        <!-- Mi Mirror / device interconnect -->
-        <item>com.xiaomi.mirror</item>
         <!-- Xiaomi Browser itself -->
         <item>com.android.browser</item>
-        <!-- Mi Video — sometimes handles URLs -->
-        <item>com.miui.video</item>
-        <!-- Security Center — can open links -->
-        <item>com.miui.securitycenter</item>
-        <!-- System UI -->
-        <item>com.android.systemui</item>
         <!-- Settings / Wi-Fi details page, including "Manage Xiaomi router" -->
         <item>com.android.settings</item>
         <!-- HyperAI Engine — clipboard URL recognition + screen recognition -->

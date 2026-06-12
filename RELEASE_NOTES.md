@@ -1,6 +1,30 @@
 # Release Notes
 
-## v1.2.1 (current)
+## v1.2.2 (current)
+
+### 中文
+
+v1.2.2 主要是把默认作用域收回来一点，同时保留已经验证过的三条链路。
+
+- 推荐作用域从 13 个缩到 9 个，去掉 `com.xiaomi.mirror`、`com.miui.video`、`com.miui.securitycenter` 和 `com.android.systemui`。
+- 保留小米互传、小爱识屏 / 超级小爱、AI Engine、contentcatcher、AI 视觉助手，以及设置里的“小米路由管理”入口所需作用域。
+- 移除一个只用于记录日志的 `PackageManager.resolveActivity` hook。它不改结果，release 版里继续挂着意义不大。
+- 回归测试小爱识屏、小米互传 URL、设置里的“管理小米路由”，三项都能继续交给系统默认浏览器。
+
+这一版没有改变默认浏览器选择逻辑，也没有硬编码任何浏览器包名。
+
+### English
+
+v1.2.2 trims the default LSPosed scope without dropping the paths that were tested on-device.
+
+- Reduce the recommended scope from 13 packages to 9 by removing `com.xiaomi.mirror`, `com.miui.video`, `com.miui.securitycenter`, and `com.android.systemui`.
+- Keep the scopes needed by Mi Share, XiaoAi / Super XiaoAi screen recognition, AI Engine, contentcatcher, AI vision, and the Settings entry for Xiaomi router management.
+- Remove the `PackageManager.resolveActivity` hook that only logged resolver results. It did not change behavior, so it should not stay in the release build.
+- Retested XiaoAi screen recognition, Mi Share URL handling, and Settings' "Manage Xiaomi router" entry. All three still hand links to the system default browser.
+
+This release does not change browser selection and still does not hard-code a browser package.
+
+## v1.2.1
 
 ### 中文
 

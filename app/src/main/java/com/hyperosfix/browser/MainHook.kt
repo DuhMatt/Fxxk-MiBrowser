@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
-import android.content.pm.ResolveInfo
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -461,37 +460,7 @@ class MainHook : IXposedHookLoadPackage {
             Log.w(TAG, "[PackageManager] getApplicationInfo(flags): ${t.javaClass.simpleName}")
         }
 
-        // 5. resolveActivity — intercept http/https intents targeting Xiaomi Browser
-        try {
-            XposedHelpers.findAndHookMethod(
-                pmClass, effectiveCl,
-                "resolveActivity",
-                Intent::class.java, Int::class.javaPrimitiveType!!,
-                object : XC_MethodHook() {
-                    override fun afterHookedMethod(param: MethodHookParam) {
-                        val intent = param.args[0] as? Intent ?: return
-                        val data = intent.data ?: return
-                        val scheme = data.scheme
-                        if (scheme == "http" || scheme == "https") {
-                            // If resolveActivity returns null or Xiaomi Browser,
-                            // it means the browser check failed — log it
-                            val result = param.result
-                            if (result != null) {
-                                val ri = result as? ResolveInfo
-                                val resolvedPkg = ri?.activityInfo?.packageName
-                                if (XiaomiPackageList.isXiaomiBrowser(resolvedPkg)) {
-                                    Log.d(TAG, "[PackageManager] resolveActivity returned Xiaomi Browser for: $data")
-                                }
-                            }
-                        }
-                    }
-                })
-            Log.i(TAG, "[PackageManager] Hooked resolveActivity(Intent, int)")
-        } catch (t: Throwable) {
-            Log.w(TAG, "[PackageManager] resolveActivity: ${t.javaClass.simpleName}")
-        }
-
-        // 6. getLaunchIntentForPackage — some apps use this to check if a package can be launched
+        // 5. getLaunchIntentForPackage — some apps use this to check if a package can be launched
         try {
             XposedHelpers.findAndHookMethod(
                 pmClass, effectiveCl,
