@@ -89,69 +89,7 @@ object IntentInterceptor {
 
         try {
             Log.i(TAG, "Intercepted web intent from ${context.packageName}: ${intent.data}")
-
-            // Clean the intent: remove forced package/component targeting
-            val cleaned = cleanIntent(intent)
-
-            // Get default browser info from system
-            val browser = DefaultBrowserResolver.resolveDefaultBrowser(context)
-
-            if (browser != null) {
-                // If URL recovery failed and we still have a market:// or mi:// scheme,
-                // don't try to open it in the browser — just open the browser's main
-                // activity directly. Browsers can't handle market:// URIs.
-                val effectiveData = cleaned.data
-                val scheme = effectiveData?.scheme
-                val needsFallback = scheme == "market" || scheme == "mi" ||
-                    (scheme != null && scheme.startsWith("mi"))
-
-                if (needsFallback) {
-                    if (isXiaomiBrowserDownloadUri(intent.data)) {
-                        Log.w(TAG, "URL recovery failed; canceling Xiaomi Market download-page intent")
-                        param.result = null
-                    } else {
-                        Log.w(TAG, "URL recovery failed; keeping original intent instead of opening https://")
-                    }
-                    return
-                }
-
-                val replacement = if (browser.isDefault) {
-                    DefaultBrowserResolver.buildSpecificBrowserIntent(
-                        effectiveData ?: return,
-                        browser.packageName
-                    )
-                } else {
-                    Intent.createChooser(
-                        DefaultBrowserResolver.buildChooserIntent(effectiveData ?: return),
-                        "Open with"
-                    )
-                }
-
-                replacement.flags = cleaned.flags
-                if (context !is Activity) {
-                    replacement.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                replacement.putExtras(cleaned)
-
-                Log.i(TAG, "Redirecting to: ${replacement.component ?: replacement.`package`
-                    ?: "chooser"}")
-
-                // Cancel the original call and start our replacement
-                param.result = null  // prevents original startActivity from proceeding
-
-                // Start the replacement intent using the same context
-                try {
-                    context.startActivity(replacement, options)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to start replacement activity", e)
-                    // Fallback: let original proceed (worst case: Xiaomi browser opens)
-                    // We don't re-throw to avoid crashing the calling app.
-                }
-            } else {
-                // No browser at all — let the original intent proceed
-                // (Android will show an error or app-not-found dialog)
-                Log.w(TAG, "No browser found on device, letting original intent proceed")
-            }
+            redirectIntent(intent, context, options, param)
         } finally {
             exitGuard(intent)
         }
@@ -174,59 +112,53 @@ object IntentInterceptor {
 
         try {
             Log.i(TAG, "Intercepted (Instrumentation) from ${context.packageName}: ${intent.data}")
-
-            val cleaned = cleanIntent(intent)
-            val browser = DefaultBrowserResolver.resolveDefaultBrowser(context)
-
-            if (browser != null) {
-                val effectiveData = cleaned.data
-                val scheme = effectiveData?.scheme
-                val needsFallback = scheme == "market" || scheme == "mi" ||
-                    (scheme != null && scheme.startsWith("mi"))
-
-                if (needsFallback) {
-                    if (isXiaomiBrowserDownloadUri(intent.data)) {
-                        Log.w(TAG, "URL recovery failed (Instr); canceling Xiaomi Market download-page intent")
-                        param.result = null
-                    } else {
-                        Log.w(TAG, "URL recovery failed (Instr); keeping original intent instead of opening https://")
-                    }
-                    return
-                }
-
-                val replacement = if (browser.isDefault) {
-                    DefaultBrowserResolver.buildSpecificBrowserIntent(
-                        effectiveData ?: return,
-                        browser.packageName
-                    )
-                } else {
-                    Intent.createChooser(
-                        DefaultBrowserResolver.buildChooserIntent(effectiveData ?: return),
-                        "Open with"
-                    )
-                }
-
-                replacement.flags = cleaned.flags
-                if (context !is Activity) {
-                    replacement.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                replacement.putExtras(cleaned)
-
-                Log.i(TAG, "Redirecting (Instrumentation) to: ${replacement.component ?: replacement.`package`
-                    ?: "chooser"}")
-
-                param.result = null
-
-                try {
-                    context.startActivity(replacement)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to start replacement (Instrumentation)", e)
-                }
-            } else {
-                Log.w(TAG, "No browser found, letting original proceed (Instrumentation)")
-            }
+            redirectIntent(intent, context, null, param, " (Instrumentation)")
         } finally {
             exitGuard(intent)
+        }
+    }
+
+    private fun redirectIntent(
+        original: Intent,
+        context: Context,
+        options: Bundle?,
+        param: XC_MethodHook.MethodHookParam,
+        label: String = ""
+    ) {
+        val cleaned = cleanIntent(original)
+        val browser = DefaultBrowserResolver.resolveDefaultBrowser(context)
+        if (browser == null) {
+            Log.w(TAG, "No browser found, letting original proceed$label")
+            return
+        }
+
+        val effectiveData = cleaned.data ?: return
+        if (isUnopenableXiaomiScheme(effectiveData)) {
+            if (isXiaomiBrowserDownloadUri(original.data)) {
+                Log.w(TAG, "URL recovery failed$label; canceling Xiaomi Market download-page intent")
+                param.result = null
+            } else {
+                Log.w(TAG, "URL recovery failed$label; keeping original intent instead of opening https://")
+            }
+            return
+        }
+
+        val replacement = if (browser.isDefault) {
+            DefaultBrowserResolver.buildSpecificBrowserIntent(effectiveData, browser.packageName)
+        } else {
+            Intent.createChooser(DefaultBrowserResolver.buildChooserIntent(effectiveData), "Open with")
+        }.apply {
+            flags = cleaned.flags
+            if (context !is Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            putExtras(cleaned)
+        }
+
+        Log.i(TAG, "Redirecting$label to: ${replacement.component ?: replacement.`package` ?: "chooser"}")
+        param.result = null
+        try {
+            context.startActivity(replacement, options)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start replacement$label", e)
         }
     }
 
@@ -681,6 +613,11 @@ object IntentInterceptor {
         }
 
         return true
+    }
+
+    private fun isUnopenableXiaomiScheme(uri: Uri): Boolean {
+        val scheme = uri.scheme ?: return false
+        return scheme == "market" || scheme.startsWith("mi")
     }
 
     private fun isXiaomiBrowserDownloadUri(uri: Uri?): Boolean {

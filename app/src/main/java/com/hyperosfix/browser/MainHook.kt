@@ -232,13 +232,11 @@ class MainHook : IXposedHookLoadPackage {
             "startActivities",
             arrayOf(Array<Intent>::class.java, Bundle::class.java)
         ) { param ->
-            val intents = param.args[0] as? Array<Intent>
+            val intents = param.args[0] as? Array<*>
             val ctx = param.thisObject as? Context
             if (intents != null) {
                 for (i in intents.indices) {
-                    intents[i]?.let { intent ->
-                        diagnosticLog(ctx, intent, "ContextImpl.startActivities[$i]")
-                    }
+                    diagnosticLog(ctx, intents[i] as? Intent, "ContextImpl.startActivities[$i]")
                 }
             }
         }
@@ -924,7 +922,7 @@ class MainHook : IXposedHookLoadPackage {
 
                                     if (XiaomiPackageList.isXiaomiBrowser(pkg) ||
                                         (comp != null && XiaomiPackageList.isXiaomiBrowser(comp.packageName)) ||
-                                        (comp != null && comp.packageName?.contains("browser") == true)) {
+                                        (comp != null && comp.packageName.contains("browser"))) {
 
                                         Log.d(TAG, "[VoiceAssist] Cleaning intent in ${method.name}: pkg=$pkg, comp=$comp")
 

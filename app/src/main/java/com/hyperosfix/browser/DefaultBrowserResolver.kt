@@ -34,12 +34,11 @@ object DefaultBrowserResolver {
      * Builds a minimal "open web page" intent to probe the system resolver.
      * Using "https://" as a neutral URI.
      */
-    private fun buildProbeIntent(): Intent {
-        return Intent(Intent.ACTION_VIEW, Uri.parse("https://www.example.com")).apply {
+    private fun buildProbeIntent() =
+        Intent(Intent.ACTION_VIEW, Uri.parse("https://www.example.com")).apply {
             addCategory(Intent.CATEGORY_BROWSABLE)
             addCategory(Intent.CATEGORY_DEFAULT)
         }
-    }
 
     /**
      * Resolve the system's default browser for http/https intents.
@@ -86,15 +85,8 @@ object DefaultBrowserResolver {
             return null
         }
 
-        // Filter out Xiaomi browsers from the candidate list
-        val nonXiaomiBrowsers = allBrowsers.filter { info ->
-            val pkg = info.activityInfo.packageName
-            !XiaomiPackageList.isXiaomiBrowser(pkg)
-        }
-
-        if (nonXiaomiBrowsers.isNotEmpty()) {
-            // Return the first non-Xiaomi browser (the chooser will let user pick)
-            val first = nonXiaomiBrowsers.first()
+        allBrowsers.firstOrNull { !XiaomiPackageList.isXiaomiBrowser(it.activityInfo.packageName) }
+            ?.let { first ->
             val pkg = first.activityInfo.packageName
             val act = first.activityInfo.name
             Log.i(TAG, "No default; first available non-Xiaomi browser: $pkg / $act")
