@@ -1,6 +1,32 @@
 # Release Notes
 
-## v1.2.2 (current)
+## v1.2.4 (current)
+
+### 中文
+
+v1.2.4 是一次代码整理版。功能没有换方向，只把已经测试正常的跳转流程收短一点。
+
+- 合并 `startActivity` 和 `Instrumentation.execStartActivity` 里重复的浏览器重定向逻辑，两个入口现在走同一段处理。
+- 精简默认浏览器候选选择逻辑，仍然优先避开小米浏览器，再交给系统默认浏览器或系统选择器。
+- 简化小米浏览器 / 应用商店包名判断，行为不变。
+- 清掉几处 Kotlin 编译器提示里的多余安全调用和不必要类型转换。
+- 已在手机上测试，现有功能正常。
+
+这一版不改 LSPosed 推荐作用域，不改默认浏览器选择策略，也不新增任何浏览器包名。
+
+### English
+
+v1.2.4 is a cleanup release. The behavior stays the same; the redirect path is just shorter now.
+
+- Merge the duplicated redirect logic used by `startActivity` and `Instrumentation.execStartActivity`.
+- Trim the default-browser candidate selection while still avoiding Xiaomi Browser first, then using the system default browser or Android chooser.
+- Simplify Xiaomi Browser / app-store package checks without changing the result.
+- Remove a few unnecessary safe calls and casts flagged by the Kotlin compiler.
+- Tested on-device after the change. Existing behavior still works.
+
+This release does not change the recommended LSPosed scope, browser selection behavior, or add any hard-coded browser package.
+
+## v1.2.2
 
 ### 中文
 
