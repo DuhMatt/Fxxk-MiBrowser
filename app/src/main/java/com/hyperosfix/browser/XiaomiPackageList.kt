@@ -133,16 +133,12 @@ object XiaomiPackageList {
     /**
      * Returns true if [pkg] is a known Xiaomi browser package.
      */
-    fun isXiaomiBrowser(pkg: String?): Boolean {
-        return pkg != null && ALL_BROWSER_PACKAGES.contains(pkg)
-    }
+    fun isXiaomiBrowser(pkg: String?) = pkg in ALL_BROWSER_PACKAGES
 
     /**
      * Returns true if [pkg] is a known Xiaomi app store package.
      */
-    fun isXiaomiMarket(pkg: String?): Boolean {
-        return pkg != null && ALL_MARKET_PACKAGES.contains(pkg)
-    }
+    fun isXiaomiMarket(pkg: String?) = pkg in ALL_MARKET_PACKAGES
 
     /**
      * Returns true if [pkg] is a known Xiaomi system app that may
@@ -150,7 +146,7 @@ object XiaomiPackageList {
      */
     fun isXiaomiSystemApp(pkg: String?): Boolean {
         if (pkg == null) return false
-        return ALL_XIAOMI_SYSTEM_APPS.contains(pkg) ||
+        return pkg in ALL_XIAOMI_SYSTEM_APPS ||
             pkg.startsWith("com.miui.") ||
             pkg.startsWith("com.xiaomi.") ||
             pkg.startsWith("com.mi.")
