@@ -3,7 +3,6 @@
 防止 HyperOS / MIUI 强制使用小米浏览器打开链接，改为调用系统默认浏览器。
 Prevent HyperOS / MIUI from forcing links into Xiaomi Browser; redirect to the system default browser.
 
-当前版本：`1.2.2`
 
 ## 中文说明
 
