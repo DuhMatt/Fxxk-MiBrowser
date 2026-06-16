@@ -152,7 +152,7 @@ HyperOS / MIUI 的内部实现经常变。这个模块只保证在上面列出�
 
 ## English
 
-Current version: `1.2.2`
+Current version: `1.2.6`
 
 This is an LSPosed module for HyperOS / MIUI. It fixes one core problem: when Xiaomi system components receive a web link, they should not force it into Xiaomi Browser, and they should not open Xiaomi Market's browser download page when Xiaomi Browser is removed or disabled. The link should go to the browser the user selected as the Android default browser.
 
