@@ -1,10 +1,15 @@
 package com.hyperosfix.browser
 
 import android.app.Activity
+import android.app.Notification
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -56,6 +61,7 @@ class MainHook : IXposedHookLoadPackage {
         // ── Mi Share specific hooks ──────────────────────────────────────
         if (pkg == XiaomiPackageList.MI_SHARE) {
             hookMiShareService(lpparam)
+            hookMiShareNotificationIcon()
         }
 
         // ── PackageManager hooks: fake Xiaomi Browser as "installed" ─────
@@ -71,6 +77,11 @@ class MainHook : IXposedHookLoadPackage {
         if (pkg == XiaomiPackageList.MI_SHARE || XiaomiPackageList.isXiaomiSystemApp(pkg)) {
             hookPendingIntentCreation()
         }
+
+        // ── Framework-level notification icon replacement ────────────────
+        // Hook NotificationManager.notify at framework level to replace
+        // browser icons in Mi Share and other system notifications
+        hookFrameworkNotificationIcon()
 
         // ── Framework-level hooks (catch-all for all processes) ──────────
         // Try BOTH classloaders — system for framework, lpparam for app-specific
@@ -482,7 +493,61 @@ class MainHook : IXposedHookLoadPackage {
         } catch (t: Throwable) {
             Log.w(TAG, "[PackageManager] getLaunchIntentForPackage: ${t.javaClass.simpleName}")
         }
+
+        // 6. Mi Share's receive popup may draw the target browser icon from PackageManager.
+        // ponytail: only swap Xiaomi Browser icons in MiShare; add exact popup-class hook if this misses a future build.
+        try {
+            XposedHelpers.findAndHookMethod(
+                pmClass, effectiveCl,
+                "getApplicationIcon",
+                String::class.java,
+                object : XC_MethodHook() {
+                    override fun beforeHookedMethod(param: MethodHookParam) {
+                        val pkgName = param.args[0] as? String ?: return
+                        if (!shouldSwapMiShareBrowserIcon(pkgName)) return
+
+                        val context = android.app.AndroidAppHelper.currentApplication() ?: return
+                        param.result = getDefaultBrowserDrawable(context)
+                        Log.d(TAG, "[PackageManager] Replaced MiShare popup browser icon for: $pkgName")
+                    }
+                })
+            Log.i(TAG, "[PackageManager] Hooked getApplicationIcon(String)")
+        } catch (t: Throwable) {
+            Log.w(TAG, "[PackageManager] getApplicationIcon(String): ${t.javaClass.simpleName}")
+        }
+
+        try {
+            XposedHelpers.findAndHookMethod(
+                pmClass, effectiveCl,
+                "getApplicationIcon",
+                android.content.pm.ApplicationInfo::class.java,
+                object : XC_MethodHook() {
+                    override fun beforeHookedMethod(param: MethodHookParam) {
+                        val appInfo = param.args[0] as? android.content.pm.ApplicationInfo ?: return
+                        if (!shouldSwapMiShareBrowserIcon(appInfo.packageName)) return
+
+                        val context = android.app.AndroidAppHelper.currentApplication() ?: return
+                        param.result = getDefaultBrowserDrawable(context)
+                        Log.d(TAG, "[PackageManager] Replaced MiShare popup browser icon from ApplicationInfo")
+                    }
+                })
+            Log.i(TAG, "[PackageManager] Hooked getApplicationIcon(ApplicationInfo)")
+        } catch (t: Throwable) {
+            Log.w(TAG, "[PackageManager] getApplicationIcon(ApplicationInfo): ${t.javaClass.simpleName}")
+        }
     }
+
+    private fun shouldSwapMiShareBrowserIcon(pkgName: String?): Boolean {
+        val callerPackage = android.app.AndroidAppHelper.currentPackageName()
+            ?: android.app.AndroidAppHelper.currentApplication()?.packageName
+        return callerPackage == XiaomiPackageList.MI_SHARE &&
+            XiaomiPackageList.isXiaomiBrowser(pkgName)
+    }
+
+    private fun getDefaultBrowserDrawable(context: Context) =
+        DefaultBrowserResolver.resolveDefaultBrowser(context)?.let { browser ->
+            runCatching { context.packageManager.getApplicationIcon(browser.packageName) }.getOrNull()
+        }
 
     /**
      * Build a minimal [PackageInfo] that satisfies "is the package installed?" checks.
@@ -622,6 +687,42 @@ class MainHook : IXposedHookLoadPackage {
             Log.i(TAG, "[MiShare] Hooked LyraShareListenerService.onStartCommand")
         } catch (t: Throwable) {
             Log.w(TAG, "[MiShare] Failed to hook onStartCommand: ${t.javaClass.simpleName} — ${t.message}")
+        }
+    }
+
+    private fun hookMiShareNotificationIcon() {
+        try {
+            XposedHelpers.findAndHookMethod(
+                android.app.NotificationManager::class.java,
+                "notify",
+                Int::class.javaPrimitiveType,
+                Notification::class.java,
+                object : XC_MethodHook() {
+                    override fun beforeHookedMethod(param: MethodHookParam) {
+                        val id = param.args[0] as Int
+                        val notification = param.args[1] as? Notification ?: return
+                        val extras = notification.extras
+
+                        // Log ALL notifications for debugging
+                        val title = extras?.getCharSequence("android.title")?.toString() ?: ""
+                        val text = extras?.getCharSequence("android.text")?.toString() ?: ""
+                        Log.d(TAG, "[MiShare] Notification id=$id, title=$title, text=$text")
+                        XposedBridge.log("[$TAG] MiShare: notify id=$id, title=$title, text=$text")
+
+                        // Check if this notification has a small icon set
+                        val smallIcon = XposedHelpers.getObjectField(notification, "mSmallIcon")
+                        if (smallIcon == null) return
+
+                        val context = android.app.AndroidAppHelper.currentApplication() ?: return
+                        if (shouldReplaceMiShareNotificationIcon(notification)) {
+                            replaceNotificationIconWithDefaultBrowser(context, notification, "[MiShare]")
+                        }
+                    }
+                })
+            Log.i(TAG, "[MiShare] Hooked NotificationManager.notify for icon replacement")
+            XposedBridge.log("[$TAG] MiShare: hooked NotificationManager.notify for icon replacement")
+        } catch (t: Throwable) {
+            Log.w(TAG, "[MiShare] Failed to hook NotificationManager.notify: ${t.message}")
         }
     }
 
@@ -792,6 +893,156 @@ class MainHook : IXposedHookLoadPackage {
 
         // Note: jumpToXiaoMiBrowser has been removed in HyperOS V816 / aicr 3.17.3.
         // The AI Engine now uses standard startActivity() which our framework hooks catch.
+
+        // Hook NotificationManager.notify to replace clipboard notification icon
+        hookClipboardNotificationIcon()
+    }
+
+    private fun hookFrameworkNotificationIcon() {
+        try {
+            XposedHelpers.findAndHookMethod(
+                android.app.NotificationManager::class.java,
+                "notify",
+                String::class.java,
+                Int::class.javaPrimitiveType,
+                Notification::class.java,
+                object : XC_MethodHook() {
+                    override fun beforeHookedMethod(param: MethodHookParam) {
+                        val pkg = param.args[0] as? String ?: return
+                        val id = param.args[1] as Int
+                        val notification = param.args[2] as? Notification ?: return
+
+                        // notify(String, int, Notification)'s first argument is a tag, not a package.
+                        val callerPackage = android.app.AndroidAppHelper.currentPackageName()
+                            ?: android.app.AndroidAppHelper.currentApplication()?.packageName
+                        if (callerPackage != XiaomiPackageList.MI_SHARE) return
+
+                        val extras = notification.extras
+                        val title = extras?.getCharSequence("android.title")?.toString() ?: ""
+                        val text = extras?.getCharSequence("android.text")?.toString() ?: ""
+
+                        Log.d(TAG, "[Framework] MiShare notification tag=$pkg id=$id, title=$title, text=$text")
+                        XposedBridge.log("[$TAG] Framework: MiShare notify id=$id, title=$title, text=$text")
+
+                        // Check if notification has a small icon
+                        val smallIcon = XposedHelpers.getObjectField(notification, "mSmallIcon")
+                        if (smallIcon == null) return
+
+                        val context = android.app.AndroidAppHelper.currentApplication() ?: return
+                        if (shouldReplaceMiShareNotificationIcon(notification)) {
+                            replaceNotificationIconWithDefaultBrowser(context, notification, "[Framework]")
+                        }
+                    }
+                })
+            Log.i(TAG, "[Framework] Hooked NotificationManager.notify(String, int, Notification)")
+            XposedBridge.log("[$TAG] Framework: hooked NotificationManager.notify for icon replacement")
+        } catch (t: Throwable) {
+            Log.w(TAG, "[Framework] Failed to hook notify: ${t.message}")
+        }
+    }
+
+    private fun hookClipboardNotificationIcon() {
+        try {
+            XposedHelpers.findAndHookMethod(
+                android.app.NotificationManager::class.java,
+                "notify",
+                Int::class.javaPrimitiveType,
+                Notification::class.java,
+                object : XC_MethodHook() {
+                    override fun beforeHookedMethod(param: MethodHookParam) {
+                        val id = param.args[0] as Int
+                        val notification = param.args[1] as? Notification ?: return
+
+                        // Detect clipboard notification: id==111 with "copyText" in extras
+                        if (id != 111) return
+                        val extras = notification.extras ?: return
+                        if (extras.getString("copyText") == null) return
+
+                        val context = android.app.AndroidAppHelper.currentApplication() ?: return
+                        val browser = DefaultBrowserResolver.resolveDefaultBrowser(context) ?: return
+
+                        try {
+                            val newIcon = getAppIcon(context, browser.packageName) ?: return
+                            XposedHelpers.setObjectField(notification, "mSmallIcon", newIcon)
+                            XposedHelpers.setObjectField(notification, "mLargeIcon", newIcon)
+                            extras.putParcelable("miui.appIcon", newIcon)
+                            val focusPics = extras.getBundle("miui.focus.pics")
+                            if (focusPics != null) {
+                                focusPics.putParcelable("miui.focus.pic_image", newIcon)
+                                focusPics.putParcelable("miui.land.pic_image", newIcon)
+                            }
+                            Log.d(TAG, "[AI-Engine] Replaced clipboard notification icon with ${browser.packageName}")
+                            XposedBridge.log("[$TAG] AI-Engine: replaced notification icon with ${browser.packageName}")
+                        } catch (e: Exception) {
+                            Log.w(TAG, "[AI-Engine] Failed to replace notification icon: ${e.message}")
+                        }
+                    }
+                })
+            Log.i(TAG, "[AI-Engine] Hooked NotificationManager.notify for clipboard icon replacement")
+            XposedBridge.log("[$TAG] AI-Engine: hooked NotificationManager.notify for icon replacement")
+        } catch (t: Throwable) {
+            Log.w(TAG, "[AI-Engine] Failed to hook NotificationManager.notify: ${t.message}")
+        }
+    }
+
+    private fun shouldReplaceMiShareNotificationIcon(notification: Notification): Boolean {
+        if (IntentInterceptor.hasRecentXiaomiSourceUrl()) return true
+
+        val extras = notification.extras ?: return false
+        val title = extras.getCharSequence("android.title")?.toString().orEmpty()
+        val text = extras.getCharSequence("android.text")?.toString().orEmpty()
+        val bigText = extras.getCharSequence("android.bigText")?.toString().orEmpty()
+        val content = "$title\n$text\n$bigText"
+        return content.contains("http") ||
+            content.contains("浏览器") ||
+            content.contains("browser", ignoreCase = true) ||
+            content.contains("打开") ||
+            content.contains("链接") ||
+            content.contains("网页")
+    }
+
+    private fun replaceNotificationIconWithDefaultBrowser(
+        context: Context,
+        notification: Notification,
+        source: String
+    ) {
+        val browser = DefaultBrowserResolver.resolveDefaultBrowser(context) ?: return
+        try {
+            val newIcon = getAppIcon(context, browser.packageName) ?: return
+            XposedHelpers.setObjectField(notification, "mSmallIcon", newIcon)
+            XposedHelpers.setObjectField(notification, "mLargeIcon", newIcon)
+            notification.extras?.putParcelable("miui.appIcon", newIcon)
+            val focusPics = notification.extras?.getBundle("miui.focus.pics")
+            if (focusPics != null) {
+                focusPics.putParcelable("miui.focus.pic_image", newIcon)
+                focusPics.putParcelable("miui.land.pic_image", newIcon)
+            }
+            Log.d(TAG, "$source Replaced MiShare notification icon with ${browser.packageName}")
+            XposedBridge.log("[$TAG] $source replaced MiShare icon with ${browser.packageName}")
+        } catch (e: Exception) {
+            Log.w(TAG, "$source Failed to replace MiShare notification icon: ${e.message}")
+        }
+    }
+
+    private fun getAppIcon(context: Context, pkgName: String): Icon? {
+        val pm = context.packageManager
+        val drawable = try {
+            pm.getApplicationIcon(pkgName)
+        } catch (_: PackageManager.NameNotFoundException) {
+            return null
+        }
+        val bitmap = if (drawable is BitmapDrawable) {
+            drawable.bitmap
+        } else {
+            val w = Math.max(drawable.intrinsicWidth, 1)
+            val h = Math.max(drawable.intrinsicHeight, 1)
+            val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bmp)
+            drawable.setBounds(0, 0, canvas.width, canvas.height)
+            drawable.draw(canvas)
+            bmp
+        }
+        return Icon.createWithBitmap(bitmap)
     }
 
     /**
