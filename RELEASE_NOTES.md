@@ -1,6 +1,26 @@
 # Release Notes
 
-## v1.2.4 (current)
+## v1.2.5 (current)
+
+### 中文
+
+v1.2.5 修了一个会导致设置搜索闪退的问题。
+
+- 补齐假 `PackageInfo` 里缺的 `applicationInfo` 字段。之前模块假装小米浏览器已安装时返回的对象不完整，设置搜索遍历所有包名检查系统应用身份时读到 null 直接崩了。
+- 顺便给假 `ApplicationInfo` 加了 `sourceDir`，避免其他可能读这个字段的代码再踩空。
+
+在小米 17 Ultra 和小米 13 Ultra 上确认过，设置搜索不再闪退，路由管理跳转也正常。
+
+### English
+
+v1.2.5 fixes a crash when searching in Settings.
+
+- The fake `PackageInfo` returned by the module was missing its `applicationInfo` field. When Settings' search thread iterates all packages and reads `applicationInfo.flags`, the null field caused a `NullPointerException`.
+- Added `sourceDir` to the fake `ApplicationInfo` as well, in case other code paths read it.
+
+Confirmed on Xiaomi 17 Ultra and Xiaomi 13 Ultra. Settings search no longer crashes, and the Xiaomi router management redirect still works.
+
+## v1.2.4
 
 ### 中文
 

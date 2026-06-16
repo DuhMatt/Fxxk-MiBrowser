@@ -493,6 +493,7 @@ class MainHook : IXposedHookLoadPackage {
         pi.versionName = "1.0"
         @Suppress("DEPRECATION")
         pi.versionCode = 1
+        pi.applicationInfo = buildFakeApplicationInfo(packageName)
         return pi
     }
 
@@ -503,6 +504,8 @@ class MainHook : IXposedHookLoadPackage {
         val ai = android.content.pm.ApplicationInfo()
         ai.packageName = packageName
         ai.flags = android.content.pm.ApplicationInfo.FLAG_SYSTEM
+        ai.sourceDir = "/system/app/MiBrowserStub/MiBrowserStub.apk"
+        ai.publicSourceDir = ai.sourceDir
         return ai
     }
 
