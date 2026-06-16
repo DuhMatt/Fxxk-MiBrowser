@@ -209,6 +209,8 @@ object IntentInterceptor {
         }
     }
 
+    internal fun hasRecentXiaomiSourceUrl(): Boolean = getRecentXiaomiSourceUrl() != null
+
     // ── Decision logic ───────────────────────────────────────────────────
 
     /**

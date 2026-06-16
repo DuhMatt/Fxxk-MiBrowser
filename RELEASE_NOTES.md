@@ -1,6 +1,52 @@
 # Release Notes
 
-## v1.2.4 (current)
+## v1.2.6 (current)
+
+### 中文
+
+v1.2.6 修复小米互传接收链接时仍显示小米浏览器图标的问题。
+
+- 当小米互传接收链接弹窗读取小米浏览器图标时，动态替换为用户当前默认浏览器的图标。
+- 同步处理小米互传相关通知里的浏览器图标，避免链接已经交给默认浏览器但界面仍显示小米浏览器。
+- 修正 `NotificationManager.notify(String, int, Notification)` 参数判断，避免把 tag 误当成包名。
+- 保留 v1.2.5 的设置搜索闪退修复，继续补齐假 `PackageInfo.applicationInfo` 和 `ApplicationInfo.sourceDir`。
+- 已在真机上测试小米互传链接接收弹窗，图标替换正常。
+
+这一版只替换显示图标，不改变默认浏览器选择策略，也不会把非网页文件强行当成链接打开。
+
+### English
+
+v1.2.6 fixes Xiaomi Browser icons still appearing in Mi Share link-receive UI.
+
+- Replace Xiaomi Browser icons with the user's current default browser icon when Mi Share reads the browser icon for a received link popup.
+- Also cover Mi Share browser-icon notification paths so links handed to the default browser do not still show Xiaomi Browser branding.
+- Fix the `NotificationManager.notify(String, int, Notification)` argument handling so the tag is not mistaken for a package name.
+- Keep the v1.2.5 Settings-search crash fix by preserving the fake `PackageInfo.applicationInfo` and `ApplicationInfo.sourceDir` fields.
+- Tested on-device with Mi Share link receive popup icon replacement.
+
+This release only changes displayed icons. It does not change browser selection behavior or force non-web files to open as links.
+
+## v1.2.5
+
+### 中文
+
+v1.2.5 修了一个会导致设置搜索闪退的问题。
+
+- 补齐假 `PackageInfo` 里缺的 `applicationInfo` 字段。之前模块假装小米浏览器已安装时返回的对象不完整，设置搜索遍历所有包名检查系统应用身份时读到 null 直接崩了。
+- 顺便给假 `ApplicationInfo` 加了 `sourceDir`，避免其他可能读这个字段的代码再踩空。
+
+在小米 17 Ultra 和小米 13 Ultra 上确认过，设置搜索不再闪退，路由管理跳转也正常。
+
+### English
+
+v1.2.5 fixes a crash when searching in Settings.
+
+- The fake `PackageInfo` returned by the module was missing its `applicationInfo` field. When Settings' search thread iterates all packages and reads `applicationInfo.flags`, the null field caused a `NullPointerException`.
+- Added `sourceDir` to the fake `ApplicationInfo` as well, in case other code paths read it.
+
+Confirmed on Xiaomi 17 Ultra and Xiaomi 13 Ultra. Settings search no longer crashes, and the Xiaomi router management redirect still works.
+
+## v1.2.4
 
 ### 中文
 
