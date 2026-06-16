@@ -16,6 +16,10 @@ Prevent HyperOS / MIUI from forcing links into Xiaomi Browser; redirect to the s
 2. 系统设置里连接小米路由器后，“管理小米路由”入口强制跳转小米浏览器。
 3. 小爱识屏 / 超级小爱识别到网页链接后，点击链接仍然调用小米浏览器。
 
+### 计划加入的功能
+  - 修复复制直达的浏览器跳转逻辑
+  - 修复传送门搜索功能的浏览器跳转逻辑
+
 ### 效果截图
 
 ![小米互传链接通知显示默认浏览器图标](assets/mishare-browser-icon-v1.2.6.png)
