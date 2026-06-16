@@ -20,6 +20,8 @@ Prevent HyperOS / MIUI from forcing links into Xiaomi Browser; redirect to the s
 
 ![小米互传链接通知显示默认浏览器图标](assets/mishare-browser-icon-v1.2.6.png)
 
+小米互传图标替换功能来自 [@189521394](https://github.com/189521394) 在 [#2](https://github.com/DuhMatt/Fxxk-MiBrowser/issues/2) 提出的建议，并参考了原项目 [com.fuckXiaomi.hookBrowser](https://github.com/Xposed-Modules-Repo/com.fuckXiaomi.hookBrowser) 的思路，在此感谢。
+
 ### 处理方式
 
 - 只处理网页链接，例如 `http://` 和 `https://`。
