@@ -3,8 +3,6 @@
 防止 HyperOS / MIUI 强制使用小米浏览器打开链接，改为调用系统默认浏览器。
 Prevent HyperOS / MIUI from forcing links into Xiaomi Browser; redirect to the system default browser.
 
-当前版本：`1.2.2`
-
 ## 中文说明
 
 这是一个用于 HyperOS / MIUI 的 LSPosed 模块。它只解决一个核心问题：当小米系统或系统应用拿到网页链接时，不应该强制调用小米浏览器，也不应该在小米浏览器已卸载或禁用时跳到小米应用商店的浏览器下载页，而应该交给用户在系统设置里选择的默认浏览器。
