@@ -19,6 +19,7 @@ Prevent HyperOS / MIUI from forcing links into Xiaomi Browser; redirect to the s
 ### 计划加入的功能
   - 修复复制直达的浏览器跳转逻辑
   - 修复传送门搜索功能的浏览器跳转逻辑
+  *由于本项目一开始的目的是自用，部分功能在其他模块已经支持了的就暂时没有做，如果有什么别的和小米浏览器有关的功能想要增加支持的欢迎提issue*
 
 ### 效果截图
 
