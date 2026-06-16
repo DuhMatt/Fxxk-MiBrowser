@@ -3,6 +3,7 @@
 防止 HyperOS 强制使用小米浏览器打开链接，改为调用系统默认浏览器。
 Prevent HyperOS from forcing links into Xiaomi Browser; redirect to the system default browser.
 
+本项目xposed仓库地址：https://github.com/Xposed-Modules-Repo/com.hyperosfix.browser
 
 ## 中文说明
 
