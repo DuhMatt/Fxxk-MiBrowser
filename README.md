@@ -24,7 +24,7 @@ Prevent HyperOS / MIUI from forcing links into Xiaomi Browser; redirect to the s
 
 ![小米互传链接通知显示默认浏览器图标](assets/mishare-browser-icon-v1.2.6.png)
 
-小米互传图标替换功能来自 [@189521394](https://github.com/189521394) 在 [#2](https://github.com/DuhMatt/Fxxk-MiBrowser/issues/2) 提出的建议，并参考了原项目 [com.fuckXiaomi.hookBrowser](https://github.com/Xposed-Modules-Repo/com.fuckXiaomi.hookBrowser) 的思路，在此感谢。
+小米超级岛浏览器图标替换功能来自 [@189521394](https://github.com/189521394) 在 [#2](https://github.com/DuhMatt/Fxxk-MiBrowser/issues/2) 提出的建议，并参考了原项目 [com.fuckXiaomi.hookBrowser](https://github.com/Xposed-Modules-Repo/com.fuckXiaomi.hookBrowser) 的思路，在此感谢。
 
 ### 处理方式
 
@@ -173,6 +173,11 @@ The module does not hard-code Chrome, Edge, Firefox, Via, or any other browser. 
 1. Mi Share opens shared web links with Xiaomi Browser.
 2. The "Manage Xiaomi router" entry in system Wi-Fi settings opens Xiaomi Browser.
 3. XiaoAi / Super XiaoAi screen recognition opens recognized web links with Xiaomi Browser.
+
+### Planned Features
+  - Fix the browser redirection logic for “Copy Direct”
+  - Fix the browser redirection logic for the “Portal Search” feature
+
 
 ### What It Does
 
