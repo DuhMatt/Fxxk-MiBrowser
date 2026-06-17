@@ -18,7 +18,6 @@ Prevent HyperOS from forcing links into Xiaomi Browser; redirect to the system d
 3. 小爱识屏 / 超级小爱识别到网页链接后，点击链接仍然调用小米浏览器。
 
 ### 计划加入的功能
-  - 修复复制直达的浏览器跳转逻辑
   - 修复传送门搜索功能的浏览器跳转逻辑
     
   *由于本项目一开始的目的是自用，部分功能在其他模块已经支持了的就暂时没有做，如果有什么别的和小米浏览器相关的跳转功能想要增加支持的，欢迎提issue*
