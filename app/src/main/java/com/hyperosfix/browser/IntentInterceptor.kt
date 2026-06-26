@@ -265,6 +265,15 @@ object IntentInterceptor {
             return true
         }
 
+        // Cases D-G: skip all implicit interception for market/store apps.
+        // The Xiaomi App Store (com.xiaomi.market) uses internal http/https
+        // deep links for features like "手机清理" (phone cleanup). These have
+        // no explicit browser/market target and should pass through untouched.
+        // We only intercept Cases A-C above (explicit Xiaomi Browser/Market targets).
+        if (XiaomiPackageList.isXiaomiMarket(callerPackage)) {
+            return false
+        }
+
         // Case D: http/https URL with NO explicit target but called from a
         // Xiaomi system app. HyperOS may redirect implicitly.
         if ((scheme == "http" || scheme == "https") &&
