@@ -42,7 +42,13 @@ jobs:
       - name: Build release APK
         run: ./gradlew assembleRelease
 
+      - name: Rename APK
+        run: |
+          TAG_NAME="${{ github.ref_name }}"
+          mv app/build/outputs/apk/release/app-release.apk \
+             app/build/outputs/apk/release/Fxxk-MiBrowser-${TAG_NAME}.apk
+
       - name: Upload APK to release
         uses: softprops/action-gh-release@v2
         with:
-          files: app/build/outputs/apk/release/app-release.apk
+          files: app/build/outputs/apk/release/Fxxk-MiBrowser-${{ github.ref_name }}.apk
