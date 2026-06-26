@@ -22,8 +22,8 @@ android {
         applicationId = "com.hyperosfix.browser"
         minSdk = 34
         targetSdk = 35
-        versionCode = 16
-        versionName = "1.2.6"
+        versionCode = 17
+        versionName = "1.2.7"
     }
 
     signingConfigs {
