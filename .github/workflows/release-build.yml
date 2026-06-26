@@ -52,3 +52,32 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: app/build/outputs/apk/release/Fxxk-MiBrowser-${{ github.ref_name }}.apk
+
+      - name: Sync to Xposed repo
+        if: env.LSPOSED_TOKEN != ''
+        env:
+          LSPOSED_TOKEN: ${{ secrets.LSPOSED_TOKEN }}
+          GH_TOKEN: ${{ secrets.LSPOSED_TOKEN }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          VERSION_NAME="${TAG_NAME#v}"
+          VERSION_CODE=$(grep -oP 'versionCode\s*=\s*\K\d+' app/build.gradle.kts)
+          XPOSED_TAG="${VERSION_CODE}-${VERSION_NAME}"
+          echo "Syncing ${XPOSED_TAG} to Xposed repo..."
+
+          LSPOSED_SHA=$(gh api repos/Xposed-Modules-Repo/com.hyperosfix.browser/git/refs/heads/main --jq .object.sha)
+          gh api repos/Xposed-Modules-Repo/com.hyperosfix.browser/git/tags \
+            -f tag="${XPOSED_TAG}" \
+            -f message="v${VERSION_NAME}" \
+            -f object="${LSPOSED_SHA}" \
+            -f type="commit" --jq .sha > /tmp/tag_sha
+          TAG_OBJ_SHA=$(cat /tmp/tag_sha)
+          gh api repos/Xposed-Modules-Repo/com.hyperosfix.browser/git/refs \
+            -f ref="refs/tags/${XPOSED_TAG}" \
+            -f sha="${TAG_OBJ_SHA}"
+
+          gh release create "${XPOSED_TAG}" \
+            --repo Xposed-Modules-Repo/com.hyperosfix.browser \
+            --title "v${VERSION_NAME}" \
+            --notes "v${VERSION_NAME}" \
+            "app/build/outputs/apk/release/Fxxk-MiBrowser-${TAG_NAME}.apk"
