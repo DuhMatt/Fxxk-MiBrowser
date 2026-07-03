@@ -42,10 +42,11 @@ jobs:
           cat > downloads.json << EOF
           {
             "schemaVersion": 1,
-            "label": "总下载",
+            "label": "下载量 / Downloads",
             "message": "$TOTAL",
-            "color": "4CAF50",
-            "style": "for-the-badge"
+            "color": "ffffff",
+            "labelColor": "000000",
+            "style": "flat-square"
           }
           EOF
 
