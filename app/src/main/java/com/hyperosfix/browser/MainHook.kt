@@ -2,6 +2,7 @@ package com.hyperosfix.browser
 
 import android.app.Activity
 import android.app.Notification
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInfo
@@ -956,12 +957,23 @@ class MainHook : IXposedHookLoadPackage {
                         // Detect clipboard notification: id==111 with "copyText" in extras
                         if (id != 111) return
                         val extras = notification.extras ?: return
-                        if (extras.getString("copyText") == null) return
+                        val copyText = extras.getString("copyText") ?: return
+
+                        Log.d(TAG, "[AI-Engine] notify id=$id copyText='${copyText.take(200)}'")
 
                         val context = android.app.AndroidAppHelper.currentApplication() ?: return
                         val browser = DefaultBrowserResolver.resolveDefaultBrowser(context) ?: return
 
                         try {
+                            // Inspect the notification's PendingIntent to determine
+                            // if clicking it would open Mi Browser. Only replace icon
+                            // and let framework hooks redirect when the original target
+                            // is Mi Browser — address/express notifications are untouched.
+                            if (!wouldClickOpenMiBrowser(notification, copyText)) {
+                                Log.d(TAG, "[AI-Engine] Skipped icon replace — not a Mi Browser action")
+                                return
+                            }
+
                             val newIcon = getAppIcon(context, browser.packageName) ?: return
                             XposedHelpers.setObjectField(notification, "mSmallIcon", newIcon)
                             XposedHelpers.setObjectField(notification, "mLargeIcon", newIcon)
@@ -983,6 +995,185 @@ class MainHook : IXposedHookLoadPackage {
         } catch (t: Throwable) {
             Log.w(TAG, "[AI-Engine] Failed to hook NotificationManager.notify: ${t.message}")
         }
+    }
+
+    /**
+     * Determine whether clicking this notification would launch Xiaomi Browser,
+     * by inspecting which app the PendingIntent targets.
+     *
+     * Only returns true when the ORIGINAL click target is a Xiaomi browser
+     * package — ensuring app-specific share links (Baidu Netdisk, Xunlei, etc.)
+     * are never intercepted.
+     */
+    private fun wouldClickOpenMiBrowser(notification: Notification, copyText: String): Boolean {
+        val extras = notification.extras
+        val tag = "[AI-Engine][wouldOpen]"
+
+        // ── Approach 1: Extract target from PendingIntent ──────────────
+        val pendingIntent = notification.contentIntent
+        if (pendingIntent != null) {
+            // Dump PendingIntent metadata for debugging
+            Log.d(TAG, "$tag PendingIntent class=${pendingIntent.javaClass.name}")
+            Log.d(TAG, "$tag PendingIntent creator=${pendingIntent.creatorPackage}")
+            Log.d(TAG, "$tag PendingIntent toString=${pendingIntent.toString().take(500)}")
+
+            // Try extracting wrapped Intent via multiple methods
+            val wrappedIntent: Intent? = extractIntentFromPendingIntent(pendingIntent, tag)
+
+            if (wrappedIntent != null) {
+                val targetPkg = wrappedIntent.`package`
+                val targetComp = wrappedIntent.component
+                val targetCompPkg = targetComp?.packageName
+                val dataUri = wrappedIntent.data
+                val dataScheme = dataUri?.scheme?.lowercase()
+                val action = wrappedIntent.action
+
+                Log.d(TAG, "$tag Intent{action=$action, data=$dataUri, scheme=$dataScheme, " +
+                    "pkg=$targetPkg, comp=$targetCompPkg}")
+
+                // Direct target is Mi Browser → exclude only this case
+                if (XiaomiPackageList.isXiaomiBrowser(targetPkg) ||
+                    XiaomiPackageList.isXiaomiBrowser(targetCompPkg)
+                ) {
+                    Log.d(TAG, "$tag → true: targets Mi Browser directly")
+                    return true
+                }
+
+                // For http/https data: we need to know whether the AI Engine
+                // routes this to Mi Browser (we should intercept) or to a
+                // third-party app (we should NOT intercept). The package/
+                // component tells us this: if the Intent targets an app other
+                // than Mi Browser, it's an app-specific link → don't touch.
+                Log.d(TAG, "$tag → false: Intent targets non-browser app (pkg=$targetPkg, comp=$targetCompPkg)")
+                return false
+            }
+
+            // ── Dump PendingIntent field names for debugging ─────────────
+            try {
+                val fields = pendingIntent.javaClass.declaredFields
+                for (f in fields) {
+                    f.isAccessible = true
+                    val valStr = try { f.get(pendingIntent)?.toString()?.take(120) } catch (_: Throwable) { "N/A" }
+                    Log.d(TAG, "$tag PI field: ${f.name} (${f.type.simpleName}) = $valStr")
+                }
+            } catch (_: Throwable) {}
+
+            Log.d(TAG, "$tag PendingIntent present but Intent not extractable")
+        } else {
+            Log.d(TAG, "$tag contentIntent is null")
+        }
+
+        // ── Dump all notification extras for debugging ──────────────────
+        if (extras != null) {
+            val keys = extras.keySet().sorted()
+            Log.d(TAG, "$tag Notification extras keys: ${keys.joinToString(", ")}")
+            for (k in keys) {
+                val v = extras.get(k)
+                val vStr = v?.toString()?.take(120)
+                Log.d(TAG, "$tag   extra $k = $vStr (${v?.javaClass?.simpleName})")
+            }
+        }
+
+        // ── Approach 2: URL content + title/text guard ──────────────────
+        // copyText is URL-like → could be browser URL or app-specific share
+        // link (Baidu Netdisk, Xunlei, etc.). Check notification title to
+        // distinguish: browser content has title like "打开浏览器" / "Open Browser",
+        // while app-specific links mention the target app name.
+        if (isLikelyUrl(copyText)) {
+            val title = extras?.getCharSequence("android.title")?.toString().orEmpty()
+            val text = extras?.getCharSequence("android.text")?.toString().orEmpty()
+            val isBrowserNotification = title.contains("浏览器") ||
+                title.contains("browser", ignoreCase = true) ||
+                title.contains("Browser") ||
+                text.startsWith("查看")    // "查看<URL>" → typical MIUI URL format
+            Log.d(TAG, "$tag copyText is URL-like, title='$title', text='$text', " +
+                "isBrowserNotification=$isBrowserNotification")
+            if (isBrowserNotification) {
+                Log.d(TAG, "$tag → true: URL content + browser title/text")
+                return true
+            }
+            // Title mentions a specific app (Baidu Netdisk, Xunlei, etc.)
+            Log.d(TAG, "$tag → false: URL but title='$title' is not browser-related")
+            return false
+        }
+
+        // ── Approach 3: Check notification icon resource package ─────────
+        val iconPackage = getNotificationIconPackage(notification)
+        val isMiBrowserIcon = iconPackage != null && XiaomiPackageList.isXiaomiBrowser(iconPackage)
+        Log.d(TAG, "$tag Icon pkg=$iconPackage, isMiBrowser=$isMiBrowserIcon")
+        return isMiBrowserIcon
+    }
+
+    /** Try every known way to extract the Intent from a PendingIntent. */
+    private fun extractIntentFromPendingIntent(pi: PendingIntent, tag: String): Intent? {
+        // Method A: getIntent() — hidden API on Android 14+
+        try {
+            val intent = XposedHelpers.callMethod(pi, "getIntent") as? Intent
+            if (intent != null) { Log.d(TAG, "$tag Extracted via getIntent()"); return intent }
+        } catch (_: Throwable) {}
+
+        // Method B: mIntent field (stock AOSP)
+        try {
+            val intent = XposedHelpers.getObjectField(pi, "mIntent") as? Intent
+            if (intent != null) { Log.d(TAG, "$tag Extracted via mIntent"); return intent }
+        } catch (_: Throwable) {}
+
+        // Method C: mTargetIntent field (some OEM builds)
+        try {
+            val intent = XposedHelpers.getObjectField(pi, "mTargetIntent") as? Intent
+            if (intent != null) { Log.d(TAG, "$tag Extracted via mTargetIntent"); return intent }
+        } catch (_: Throwable) {}
+
+        // Method D: Parse toString()
+        try {
+            val str = pi.toString()
+            // Common format: PendingIntent{xxx: Intent{act=... dat=... pkg=... cmp=...}}
+            val intentMatch = Regex("Intent\\{[^}]+\\}").find(str)
+            if (intentMatch != null) {
+                Log.d(TAG, "$tag toString contains Intent: ${intentMatch.value.take(300)}")
+                // Try to extract package from the toString
+                val pkgMatch = Regex("""pkg=([\\w.]+)""").find(intentMatch.value)
+                val cmpMatch = Regex("""cmp=([\\w.]+/[\\w.]+)""").find(intentMatch.value)
+                val datMatch = Regex("""dat=([^\\s]+)""").find(intentMatch.value)
+                Log.d(TAG, "$tag toString parsed: pkg=${pkgMatch?.groupValues?.get(1)}, " +
+                    "cmp=${cmpMatch?.groupValues?.get(1)}, dat=${datMatch?.groupValues?.get(1)}")
+            }
+        } catch (_: Throwable) {}
+
+        // Method E: Direct reflection on fields
+        try {
+            for (f in pi.javaClass.declaredFields) {
+                f.setAccessible(true)
+                if (Intent::class.java.isAssignableFrom(f.type)) {
+                    val intent = f.get(pi) as? Intent
+                    if (intent != null) { Log.d(TAG, "$tag Extracted via reflection field ${f.name}"); return intent }
+                }
+            }
+        } catch (_: Throwable) {}
+
+        return null
+    }
+
+    /** Read mSmallIcon's resource package, or null if not available. */
+    private fun getNotificationIconPackage(notification: Notification): String? {
+        val smallIcon = try {
+            XposedHelpers.getObjectField(notification, "mSmallIcon")
+        } catch (_: Throwable) {
+            return null
+        }
+        return try {
+            XposedHelpers.callMethod(smallIcon, "getResPackage") as? String
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
+    /** Rough URL detection — covers http/https, www.*, and bare domains */
+    private fun isLikelyUrl(text: String): Boolean {
+        if (text.startsWith("http://") || text.startsWith("https://")) return true
+        if (text.startsWith("www.")) return true
+        // Match bare domains: example.com, sub.example.com/path
+        return text.matches(Regex("""^[\w.-]+\.[a-zA-Z]{2,}(/.*)?$"""))
     }
 
     private fun shouldReplaceMiShareNotificationIcon(notification: Notification): Boolean {
