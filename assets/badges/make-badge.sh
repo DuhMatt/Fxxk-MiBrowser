@@ -14,9 +14,9 @@ VALUE="$2"
 OUTPUT="$3"
 
 # Font config
-FONT_FAMILY="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
-FONT_SIZE_LABEL=13
-FONT_SIZE_VALUE=14
+FONT_FAMILY="Arial, 'Noto Sans CJK SC', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+FONT_SIZE_LABEL=12
+FONT_SIZE_VALUE=13
 
 # Colors
 BORDER="#555555"

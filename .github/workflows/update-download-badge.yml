@@ -53,8 +53,8 @@ jobs:
 
           # --- Custom SVG badge ---
           # Fixed dimensions matching assets/badges/ style
-          LEFT_W=200
-          RIGHT_W=80
+          LEFT_W=185
+          RIGHT_W=55
           TOTAL_W=$((LEFT_W + 2 + RIGHT_W))
           H=28
           left_center=$((LEFT_W / 2))
@@ -67,8 +67,8 @@ jobs:
             <rect x="1" y="1" width="__LW__" height="__HE__" fill="#1c1c1c" rx="0"/>
             <line x1="__L1__" y1="1" x2="__L1__" y2="__H1__" stroke="#555555" stroke-width="1"/>
             <rect x="__R1__" y="1" width="__RW__" height="__HE__" fill="#f0f0f0" rx="0"/>
-            <text x="__LC__" y="__YT__" fill="#cccccc" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13px" text-anchor="middle" dominant-baseline="central">下载量 / Downloads</text>
-            <text x="__RC__" y="__YT__" fill="#333333" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="14px" font-weight="700" text-anchor="middle" dominant-baseline="central">__TOTAL__</text>
+            <text x="__LC__" y="__YT__" fill="#cccccc" font-family="Arial, 'Noto Sans CJK SC', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="12px" text-anchor="middle" dominant-baseline="central">下载量 / Downloads</text>
+            <text x="__RC__" y="__YT__" fill="#333333" font-family="Arial, 'Noto Sans CJK SC', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="13px" font-weight="700" text-anchor="middle" dominant-baseline="central">__TOTAL__</text>
           </svg>
           SVGEOF
 
