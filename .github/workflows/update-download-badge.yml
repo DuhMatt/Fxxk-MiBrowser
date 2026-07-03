@@ -39,6 +39,7 @@ jobs:
           TOTAL=$((MAIN_COUNT + XPOSED_COUNT))
           echo "Total: $TOTAL"
 
+          # --- shields.io JSON (backward compat) ---
           cat > downloads.json << EOF
           {
             "schemaVersion": 1,
@@ -50,10 +51,45 @@ jobs:
           }
           EOF
 
+          # --- Custom SVG badge ---
+          # Fixed dimensions matching assets/badges/ style
+          LEFT_W=200
+          RIGHT_W=80
+          TOTAL_W=$((LEFT_W + 2 + RIGHT_W))
+          H=28
+          left_center=$((LEFT_W / 2))
+          right_center=$((LEFT_W + 2 + RIGHT_W / 2))
+          y_text=$((H / 2 + 1))
+
+          cat > download.svg << 'SVGEOF'
+          <svg xmlns="http://www.w3.org/2000/svg" width="__W__" height="__H__">
+            <rect width="__W__" height="__H__" fill="#555555" rx="0"/>
+            <rect x="1" y="1" width="__LW__" height="__HE__" fill="#1c1c1c" rx="0"/>
+            <line x1="__L1__" y1="1" x2="__L1__" y2="__H1__" stroke="#555555" stroke-width="1"/>
+            <rect x="__R1__" y="1" width="__RW__" height="__HE__" fill="#f0f0f0" rx="0"/>
+            <text x="__LC__" y="__YT__" fill="#cccccc" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13px" text-anchor="middle" dominant-baseline="central">下载量 / Downloads</text>
+            <text x="__RC__" y="__YT__" fill="#333333" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="14px" font-weight="700" text-anchor="middle" dominant-baseline="central">__TOTAL__</text>
+          </svg>
+          SVGEOF
+
+          # Replace placeholders
+          sed -i "s/__W__/$TOTAL_W/g" download.svg
+          sed -i "s/__H__/$H/g" download.svg
+          sed -i "s/__LW__/$LEFT_W/g" download.svg
+          sed -i "s/__HE__/$((H-2))/g" download.svg
+          sed -i "s/__L1__/$((LEFT_W+1))/g" download.svg
+          sed -i "s/__H1__/$((H-1))/g" download.svg
+          sed -i "s/__R1__/$((LEFT_W+2))/g" download.svg
+          sed -i "s/__RW__/$RIGHT_W/g" download.svg
+          sed -i "s/__LC__/$left_center/g" download.svg
+          sed -i "s/__RC__/$right_center/g" download.svg
+          sed -i "s/__YT__/$y_text/g" download.svg
+          sed -i "s/__TOTAL__/$TOTAL/g" download.svg
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add downloads.json
-          git diff --cached --quiet || git commit -m "Update total download badge: $TOTAL"
+          git add downloads.json download.svg
+          git diff --cached --quiet || git commit -m "Update download badge: $TOTAL"
 
       - name: Push badge data
         run: git push origin badge-data

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="317" height="28">
+  <rect width="317" height="28" fill="#555555" rx="0"/>
+  <rect x="1" y="1" width="220" height="26" fill="#1c1c1c" rx="0"/>
+  <line x1="221" y1="1" x2="221" y2="27" stroke="#555555" stroke-width="1"/>
+  <rect x="222" y="1" width="95" height="26" fill="#f0f0f0" rx="0"/>
+  <text x="110" y="15" fill="#cccccc" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13px" text-anchor="middle" dominant-baseline="central">提交 Issue / Open Issue</text>
+  <text x="269" y="15" fill="#333333" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="14px" font-weight="700" text-anchor="middle" dominant-baseline="central">反馈 / Report</text>
+</svg>
