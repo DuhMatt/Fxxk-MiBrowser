@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="267" height="28">
-  <rect width="267" height="28" fill="#555555" rx="0"/>
-  <rect x="1" y="1" width="200" height="26" fill="#1c1c1c" rx="0"/>
-  <line x1="201" y1="1" x2="201" y2="27" stroke="#555555" stroke-width="1"/>
-  <rect x="202" y="1" width="65" height="26" fill="#f0f0f0" rx="0"/>
-  <text x="100" y="15" fill="#cccccc" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13px" text-anchor="middle" dominant-baseline="central">下载量 / Downloads</text>
-  <text x="234" y="15" fill="#333333" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="14px" font-weight="700" text-anchor="middle" dominant-baseline="central">2753</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="242" height="28">
+  <rect width="242" height="28" fill="#555555" rx="0"/>
+  <rect x="1" y="1" width="185" height="26" fill="#1c1c1c" rx="0"/>
+  <line x1="186" y1="1" x2="186" y2="27" stroke="#555555" stroke-width="1"/>
+  <rect x="187" y="1" width="55" height="26" fill="#f0f0f0" rx="0"/>
+  <text x="92" y="15" fill="#cccccc" font-family="Arial, 'Noto Sans CJK SC', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="12px" text-anchor="middle" dominant-baseline="central">下载量 / Downloads</text>
+  <text x="214" y="15" fill="#333333" font-family="Arial, 'Noto Sans CJK SC', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="13px" font-weight="700" text-anchor="middle" dominant-baseline="central">2753</text>
 </svg>
