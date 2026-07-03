@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "label": "下载量 / Downloads",
   "message": "2761",
-  "color": "efefef",
-  "labelColor": "4a4a4a",
+  "color": "f5f5f5",
+  "labelColor": "111111",
   "style": "flat-square"
 }
