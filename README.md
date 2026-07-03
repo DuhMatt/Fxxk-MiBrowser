@@ -5,7 +5,7 @@
     <img src="https://img.shields.io/github/v/release/DuhMatt/Fxxk-MiBrowser?label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC&style=for-the-badge&color=2196F3" alt="Latest Release">
   </a>
   <a href="https://github.com/DuhMatt/Fxxk-MiBrowser/releases/latest">
-    <img src="https://img.shields.io/github/downloads/DuhMatt/Fxxk-MiBrowser/total?label=%E6%80%BB%E4%B8%8B%E8%BD%BD&style=for-the-badge&color=4CAF50" alt="Total Downloads">
+    <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/DuhMatt/Fxxk-MiBrowser/badge-data/downloads.json&style=for-the-badge" alt="Total Downloads">
   </a>
 </p>
 
