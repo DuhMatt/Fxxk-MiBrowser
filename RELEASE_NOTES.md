@@ -62,6 +62,8 @@ This release only changes displayed icons. It does not change browser selection 
 
 v1.2.5 修了一个会导致设置搜索闪退的问题。
 
+感谢 [@Rakau](https://github.com/Rakau) 和 [@cow-your-sister](https://github.com/cow-your-sister) 在 [#1](https://github.com/DuhMatt/Fxxk-MiBrowser/issues/1) 报告此问题。
+
 - 补齐假 `PackageInfo` 里缺的 `applicationInfo` 字段。之前模块假装小米浏览器已安装时返回的对象不完整，设置搜索遍历所有包名检查系统应用身份时读到 null 直接崩了。
 - 顺便给假 `ApplicationInfo` 加了 `sourceDir`，避免其他可能读这个字段的代码再踩空。
 
@@ -70,6 +72,8 @@ v1.2.5 修了一个会导致设置搜索闪退的问题。
 ### English
 
 v1.2.5 fixes a crash when searching in Settings.
+
+Thanks to [@Rakau](https://github.com/Rakau) and [@cow-your-sister](https://github.com/cow-your-sister) for reporting in [#1](https://github.com/DuhMatt/Fxxk-MiBrowser/issues/1).
 
 - The fake `PackageInfo` returned by the module was missing its `applicationInfo` field. When Settings' search thread iterates all packages and reads `applicationInfo.flags`, the null field caused a `NullPointerException`.
 - Added `sourceDir` to the fake `ApplicationInfo` as well, in case other code paths read it.
