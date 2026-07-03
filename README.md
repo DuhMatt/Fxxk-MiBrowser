@@ -1,5 +1,14 @@
 # Fxxk-MiBrowser
 
+<p align="center">
+  <a href="https://github.com/DuhMatt/Fxxk-MiBrowser/releases/latest">
+    <img src="https://img.shields.io/github/v/release/DuhMatt/Fxxk-MiBrowser?label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC&style=for-the-badge&color=2196F3" alt="Latest Release">
+  </a>
+  <a href="https://github.com/DuhMatt/Fxxk-MiBrowser/releases/latest">
+    <img src="https://img.shields.io/github/downloads/DuhMatt/Fxxk-MiBrowser/total?label=%E6%80%BB%E4%B8%8B%E8%BD%BD&style=for-the-badge&color=4CAF50" alt="Total Downloads">
+  </a>
+</p>
+
 防止 HyperOS 强制使用小米浏览器打开链接，改为调用系统默认浏览器。
 Prevent HyperOS from forcing links into Xiaomi Browser; redirect to the system default browser.
 
@@ -116,7 +125,7 @@ mimarket://details?id=com.android.browser
 
 ### 安装
 
-普通用户建议直接到 [Releases](https://github.com/DuhMatt/Fxxk-MiBrowser/releases) 下载已签名的 APK。
+普通用户建议直接到 [Releases](https://github.com/DuhMatt/Fxxk-MiBrowser/releases/latest) 下载已签名的 APK。
 
 安装后，在 LSPosed 里启用模块并选择上面的作用域。改完作用域后最好重启手机；只强制停止相关应用有时也能生效，但不如重启稳。
 
@@ -269,7 +278,7 @@ Recommended LSPosed scope:
 
 ### Install
 
-For normal use, download the signed APK from [Releases](https://github.com/DuhMatt/Fxxk-MiBrowser/releases).
+For normal use, download the signed APK from [Releases](https://github.com/DuhMatt/Fxxk-MiBrowser/releases/latest).
 
 After installing it, enable the module in LSPosed and select the scopes above. A full reboot is the cleanest way to apply scope changes; force-stopping the scoped apps may work, but rebooting is less fiddly.
 
