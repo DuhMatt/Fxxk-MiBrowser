@@ -1,6 +1,30 @@
 # Release Notes
 
-## v1.2.6 (current)
+## v1.2.8 (current)
+
+### 中文
+
+v1.2.7 修复 AI Engine 复制直达（快递、地址）聚焦通知图标被错误替换的问题。
+
+感谢 [@MrJonhShelby](https://github.com/MrJonhShelby) 在 [#8](https://github.com/DuhMatt/Fxxk-MiBrowser/issues/8) 报告此问题。
+
+- 修复 `hookClipboardNotificationIcon` 无条件将所有复制直达通知（URL、地址、快递）的图标替换为浏览器图标的问题。
+- 改为通过通知 `PendingIntent` 的目标、通知文本内容、以及图标来源综合判断，**仅在通知确实是打开浏览器时才替换图标**。
+- 地址类复制触发地图 App、快递类复制触发物流 App 时，聚焦通知图标保持不变。
+- 已真机测试：复制 URL → 替换为默认浏览器图标 ✓，复制地址 → 保持地图图标 ✓。
+
+### English
+
+v1.2.7 fixes the AI Engine clipboard notification icon being incorrectly replaced for all "Copy Direct" actions (addresses, express tracking).
+
+Thanks to [@MrJonhShelby](https://github.com/MrJonhShelby) for reporting in [#8](https://github.com/DuhMatt/Fxxk-MiBrowser/issues/8).
+
+- Fix `hookClipboardNotificationIcon` unconditionally replacing all clipboard notification icons (URLs, addresses, express) with the browser icon.
+- Now inspects the notification's PendingIntent target, text content, and icon source to determine whether the action actually opens a browser. **Only replaces the icon when the notification is about opening a browser.**
+- Address copies keep their map app icon; express copies keep their logistics app icon.
+- Tested on-device: URL copy → replaced with default browser icon ✓, address copy → keeps map icon ✓.
+
+## v1.2.6
 
 ![小米互传链接通知显示默认浏览器图标](assets/mishare-browser-icon-v1.2.6.png)
 
