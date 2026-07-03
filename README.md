@@ -2,15 +2,15 @@
 
 <p align="center">
   <a href="https://github.com/DuhMatt/Fxxk-MiBrowser/releases/latest">
-    <img src="assets/badges/version.svg?v=20260704" alt="最新版本 / Latest">
+    <img src="https://img.shields.io/github/v/release/DuhMatt/Fxxk-MiBrowser?display_name=tag&label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC%20%2F%20Latest&style=flat-square&labelColor=111111&color=f5f5f5" alt="最新版本 / Latest">
   </a>
   <a href="https://github.com/DuhMatt/Fxxk-MiBrowser/releases/latest">
-    <img src="https://raw.githubusercontent.com/DuhMatt/Fxxk-MiBrowser/badge-data/download.svg?v=20260704" alt="下载量 / Downloads">
+    <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/DuhMatt/Fxxk-MiBrowser/badge-data/downloads.json&style=flat-square&labelColor=111111&color=f5f5f5" alt="下载量 / Downloads">
   </a>
 </p>
 <p align="center">
   <a href="https://github.com/DuhMatt/Fxxk-MiBrowser/issues/new/choose">
-    <img src="assets/badges/issue.svg?v=20260704" alt="提交 Issue / Open Issue">
+    <img src="https://img.shields.io/badge/%E6%8F%90%E4%BA%A4%20Issue%20%2F%20Open%20Issue-%E5%8F%8D%E9%A6%88%20%2F%20Report-f5f5f5?style=flat-square&labelColor=111111" alt="提交 Issue / Open Issue">
   </a>
 </p>
 
