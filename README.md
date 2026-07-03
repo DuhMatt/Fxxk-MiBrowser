@@ -2,15 +2,15 @@
 
 <p align="center">
   <a href="https://github.com/DuhMatt/Fxxk-MiBrowser/releases/latest">
-    <img src="assets/badges/version.svg" alt="最新版本 / Latest">
+    <img src="assets/badges/version.svg?v=20260704" alt="最新版本 / Latest">
   </a>
   <a href="https://github.com/DuhMatt/Fxxk-MiBrowser/releases/latest">
-    <img src="https://raw.githubusercontent.com/DuhMatt/Fxxk-MiBrowser/badge-data/download.svg" alt="下载量 / Downloads">
+    <img src="https://raw.githubusercontent.com/DuhMatt/Fxxk-MiBrowser/badge-data/download.svg?v=20260704" alt="下载量 / Downloads">
   </a>
 </p>
 <p align="center">
   <a href="https://github.com/DuhMatt/Fxxk-MiBrowser/issues/new/choose">
-    <img src="assets/badges/issue.svg" alt="提交 Issue / Open Issue">
+    <img src="assets/badges/issue.svg?v=20260704" alt="提交 Issue / Open Issue">
   </a>
 </p>
 
