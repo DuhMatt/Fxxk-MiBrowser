@@ -44,8 +44,8 @@ jobs:
             "schemaVersion": 1,
             "label": "下载量 / Downloads",
             "message": "$TOTAL",
-            "color": "f5f5f5",
-            "labelColor": "111111",
+            "color": "ffffff",
+            "labelColor": "000000",
             "style": "flat-square"
           }
           EOF
@@ -53,7 +53,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add downloads.json
-          git diff --cached --quiet || git commit -m "Update download badge: $TOTAL"
+          git diff --cached --quiet || git commit -m "Update total download badge: $TOTAL"
 
       - name: Push badge data
         run: git push origin badge-data
