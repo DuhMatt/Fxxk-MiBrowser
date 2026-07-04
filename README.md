@@ -29,7 +29,7 @@ Prevent HyperOS from forcing links into Xiaomi Browser; redirect to the system d
 
 1. 小米互传分享网页链接时，系统强制调用小米浏览器。
 2. 系统设置里连接小米路由器后，“管理小米路由”入口强制跳转小米浏览器。
-3. 小爱识屏 / 超级小爱识别到网页链接后，点击链接仍然调用小米浏览器。
+3. 小爱识屏 / 复制直达识别到网页链接后，点击链接仍然调用小米浏览器。
 
 ### 计划加入的功能
   - 修复传送门搜索功能的浏览器跳转逻辑
@@ -188,7 +188,7 @@ The module does not hard-code Chrome, Edge, Firefox, Via, or any other browser. 
 
 1. Mi Share opens shared web links with Xiaomi Browser.
 2. The "Manage Xiaomi router" entry in system Wi-Fi settings opens Xiaomi Browser.
-3. XiaoAi / Super XiaoAi screen recognition opens recognized web links with Xiaomi Browser.
+3. Super XiaoAi screen recognition / Clipboard shortcut opens recognized web links with Xiaomi Browser.
 
 ### Planned Features
   - Fix the browser redirection logic for “Copy Direct”
