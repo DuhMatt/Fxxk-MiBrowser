@@ -1,10 +1,10 @@
 # Fxxk-MiBrowser
 
 <p align="center">
-  <a href="https://github.com/Xposed-Modules-Repo/com.hyperosfix.browser/releases/latest">
+  <a href="https://github.com/DuhMatt/Fxxk-MiBrowser/releases/latest">
     <img src="https://img.shields.io/github/v/release/DuhMatt/Fxxk-MiBrowser?label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC%20%2F%20LATEST&style=for-the-badge&color=ffffff&labelColor=000000" alt="最新版本 / LATEST">
   </a>
-  <a href="https://github.com/Xposed-Modules-Repo/com.hyperosfix.browser/releases/latest">
+  <a href="https://github.com/DuhMatt/Fxxk-MiBrowser/releases/latest">
     <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/DuhMatt/Fxxk-MiBrowser/badge-data/downloads.json&style=for-the-badge&labelColor=000000&color=ffffff&cacheSeconds=300" alt="下载量 / DOWNLOADS">
   </a>
 </p>
