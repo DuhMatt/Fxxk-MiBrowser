@@ -2,15 +2,15 @@
 
 <p align="center">
   <a href="https://github.com/DuhMatt/Fxxk-MiBrowser/releases/latest">
-    <img src="https://img.shields.io/github/v/release/DuhMatt/Fxxk-MiBrowser?label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC%20%2F%20Latest&style=flat-square&color=ffffff&labelColor=000000" alt="最新版本 / Latest">
+    <img src="https://img.shields.io/github/v/release/DuhMatt/Fxxk-MiBrowser?label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC%20%2F%20LATEST&style=for-the-badge&color=ffffff&labelColor=000000" alt="最新版本 / LATEST">
   </a>
   <a href="https://github.com/DuhMatt/Fxxk-MiBrowser/releases/latest">
-    <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/DuhMatt/Fxxk-MiBrowser/badge-data/downloads.json" alt="下载量 / Downloads">
+    <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/DuhMatt/Fxxk-MiBrowser/badge-data/downloads.json" alt="下载量 / DOWNLOADS">
   </a>
 </p>
 <p align="center">
   <a href="https://github.com/DuhMatt/Fxxk-MiBrowser/issues/new/choose">
-    <img src="https://img.shields.io/static/v1?label=%E6%8F%90%E4%BA%A4%20Issue%20%2F%20Open%20Issue&message=%E5%8F%8D%E9%A6%88%20%2F%20Report&style=flat-square&color=ffffff&labelColor=000000" alt="提交 Issue / Open Issue">
+    <img src="https://img.shields.io/static/v1?label=%E6%8F%90%E4%BA%A4%20ISSUE%20%2F%20OPEN%20ISSUE&message=%E5%8F%8D%E9%A6%88%20%2F%20REPORT&style=for-the-badge&color=ffffff&labelColor=000000" alt="提交 ISSUE / OPEN ISSUE">
   </a>
 </p>
 
