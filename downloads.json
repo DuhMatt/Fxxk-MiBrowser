@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "label": "下载量 / Downloads",
+  "label": "下载量 / DOWNLOADS",
   "message": "2703",
   "color": "ffffff",
   "labelColor": "000000",
-  "style": "flat-square"
+  "style": "for-the-badge"
 }
