@@ -85,22 +85,17 @@ class MainHook : IXposedHookLoadPackage {
         hookFrameworkNotificationIcon()
 
         // ── Framework-level hooks (catch-all for all processes) ──────────
-        // Try BOTH classloaders — system for framework, lpparam for app-specific
-        val classLoaders = listOfNotNull(
-            ClassLoader.getSystemClassLoader(),
-            lpparam.classLoader
-        ).distinct()
-
-        for (cl in classLoaders) {
-            val loaderName = if (cl === lpparam.classLoader) "app" else "system"
-            tryHookAll(cl, loaderName)
-        }
+        // ponytail: Single classloader — framework classes (ContextImpl, Activity,
+        // Instrumentation, ContextWrapper) resolve via parent delegation anyway,
+        // and app-specific classes (miui.*) only exist on lpparam.classLoader.
+        tryHookAll(lpparam.classLoader)
     }
 
-    private fun tryHookAll(classLoader: ClassLoader, loaderLabel: String) {
+    // ponytail: "app" removed — single classloader means it's always "app"
+    private fun tryHookAll(classLoader: ClassLoader) {
         // Hook 1: ContextImpl.startActivity(Intent, Bundle) — primary
         tryHook(
-            classLoader, loaderLabel,
+            classLoader,
             "android.app.ContextImpl",
             "startActivity",
             arrayOf(Intent::class.java, Bundle::class.java)
@@ -114,7 +109,7 @@ class MainHook : IXposedHookLoadPackage {
 
         // Hook 2: ContextImpl.startActivity(Intent) — simpler overload
         tryHook(
-            classLoader, loaderLabel,
+            classLoader,
             "android.app.ContextImpl",
             "startActivity",
             arrayOf(Intent::class.java)
@@ -127,7 +122,7 @@ class MainHook : IXposedHookLoadPackage {
 
         // Hook 3: Activity.startActivity(Intent, Bundle)
         tryHook(
-            classLoader, loaderLabel,
+            classLoader,
             "android.app.Activity",
             "startActivity",
             arrayOf(Intent::class.java, Bundle::class.java)
@@ -140,7 +135,7 @@ class MainHook : IXposedHookLoadPackage {
 
         // Hook 4: Activity.startActivity(Intent)
         tryHook(
-            classLoader, loaderLabel,
+            classLoader,
             "android.app.Activity",
             "startActivity",
             arrayOf(Intent::class.java)
@@ -153,7 +148,7 @@ class MainHook : IXposedHookLoadPackage {
 
         // Hook 5: Activity.startActivityForResult(Intent, int, Bundle)
         tryHook(
-            classLoader, loaderLabel,
+            classLoader,
             "android.app.Activity",
             "startActivityForResult",
             arrayOf(Intent::class.java, Int::class.javaPrimitiveType!!, Bundle::class.java)
@@ -166,7 +161,7 @@ class MainHook : IXposedHookLoadPackage {
 
         // Hook 6: ContextWrapper.startActivity(Intent, Bundle)
         tryHook(
-            classLoader, loaderLabel,
+            classLoader,
             "android.content.ContextWrapper",
             "startActivity",
             arrayOf(Intent::class.java, Bundle::class.java)
@@ -179,7 +174,7 @@ class MainHook : IXposedHookLoadPackage {
 
         // Hook 7: Instrumentation.execStartActivity (7-param)
         tryHook(
-            classLoader, loaderLabel,
+            classLoader,
             "android.app.Instrumentation",
             "execStartActivity",
             arrayOf(
@@ -200,7 +195,7 @@ class MainHook : IXposedHookLoadPackage {
 
         // Hook 8: Instrumentation.execStartActivity (6-param, older API)
         tryHook(
-            classLoader, loaderLabel,
+            classLoader,
             "android.app.Instrumentation",
             "execStartActivity",
             arrayOf(
@@ -220,7 +215,7 @@ class MainHook : IXposedHookLoadPackage {
 
         // Hook 9: Instrumentation.execStartActivity (5-param, even older)
         tryHook(
-            classLoader, loaderLabel,
+            classLoader,
             "android.app.Instrumentation",
             "execStartActivity",
             arrayOf(
@@ -239,7 +234,7 @@ class MainHook : IXposedHookLoadPackage {
 
         // Hook 10: Context.startActivities(Intent[], Bundle) — batch launch
         tryHook(
-            classLoader, loaderLabel,
+            classLoader,
             "android.app.ContextImpl",
             "startActivities",
             arrayOf(Array<Intent>::class.java, Bundle::class.java)
@@ -258,7 +253,7 @@ class MainHook : IXposedHookLoadPackage {
 
         // Hook 11: Try MIUI-specific context wrapper
         tryHook(
-            classLoader, loaderLabel,
+            classLoader,
             "miui.util.ContextWrapper",
             "startActivity",
             arrayOf(Intent::class.java, Bundle::class.java)
@@ -271,7 +266,7 @@ class MainHook : IXposedHookLoadPackage {
 
         // Hook 12: Try MIUI Activity starter
         tryHook(
-            classLoader, loaderLabel,
+            classLoader,
             "android.miui.ActivityStarter",
             "startActivity",
             arrayOf(Intent::class.java)
@@ -284,9 +279,9 @@ class MainHook : IXposedHookLoadPackage {
 
     // ── Helpers ──────────────────────────────────────────────────────────
 
+    // ponytail: removed loaderLabel param — now always "app"
     private fun tryHook(
         classLoader: ClassLoader,
-        loaderLabel: String,
         className: String,
         methodName: String,
         paramTypes: Array<Any>,
@@ -302,22 +297,17 @@ class MainHook : IXposedHookLoadPackage {
                     callback(param)
                 }
             })
-            Log.i(TAG, "[$loaderLabel] Hooked $className.$methodName")
-            XposedBridge.log("[$TAG] Hooked $className.$methodName (loader=$loaderLabel)")
-        } catch (e: ClassNotFoundException) {
-            // Class doesn't exist in this loader — normal
-        } catch (e: NoSuchMethodError) {
-            Log.w(TAG, "[$loaderLabel] Method not found: $className.$methodName — " +
-                "signature may differ in HyperOS 3. Expected: ${paramTypes.joinToString()}")
-            XposedBridge.log("[$TAG] Method not found: $className.$methodName")
-        } catch (e: Exception) {
-            Log.e(TAG, "[$loaderLabel] Failed to hook $className.$methodName", e)
-            XposedBridge.log("[$TAG] Hook failed: $className.$methodName — ${e.message}")
+            Log.i(TAG, "[app] Hooked $className.$methodName")
+            XposedBridge.log("[$TAG] Hooked $className.$methodName")
         } catch (t: Throwable) {
-            // XposedHelpers wraps some errors (e.g. ClassNotFoundError) which extend Error,
-            // not Exception. Catch-all for any unexpected Throwable from XposedHelpers.
-            Log.w(TAG, "[$loaderLabel] Hook unavailable: $className.$methodName — ${t.javaClass.simpleName}")
-            XposedBridge.log("[$TAG] Hook unavailable: $className.$methodName — ${t.javaClass.simpleName}")
+            // ponytail: single catch — XposedHelpers can throw ClassNotFoundException,
+            // NoSuchMethodError, or unexpected Error subtypes; all handled the same way.
+            if (t is ClassNotFoundException) {
+                // Class doesn't exist in this loader — normal
+            } else {
+                Log.w(TAG, "[app] Hook unavailable: $className.$methodName — ${t.javaClass.simpleName}")
+                XposedBridge.log("[$TAG] Hook unavailable: $className.$methodName — ${t.javaClass.simpleName}")
+            }
         }
     }
 
@@ -332,35 +322,28 @@ class MainHook : IXposedHookLoadPackage {
         val action: String? = intent.action
         val caller: String? = ctx?.packageName
 
-        // Always log http/https and market:// intents
-        val isRelevant = scheme == "http" || scheme == "https" ||
-            scheme == "market" || pkg == "com.android.browser" ||
-            pkg == "com.xiaomi.market" ||
-            comp?.contains("browser") == true ||
-            comp?.contains("market") == true
+        // ponytail: DIAGNOSTIC_LOG_ALL is gated by BuildConfig.DEBUG above;
+        // no need to compute isRelevant since we always log when active.
+        val flags = "0x${Integer.toHexString(intent.flags)}"
+        Log.i(TAG, "[DIAG] $source | caller=$caller | action=$action | " +
+            "data=$data | pkg=$pkg | comp=$comp | flags=$flags")
 
-        if (isRelevant || DIAGNOSTIC_LOG_ALL) {
-            val flags = "0x${Integer.toHexString(intent.flags)}"
-            Log.i(TAG, "[DIAG] $source | caller=$caller | action=$action | " +
-                "data=$data | pkg=$pkg | comp=$comp | flags=$flags")
-
-            // Log stack trace for Mi Share market:// calls to find URL conversion point
-            if (caller == "com.miui.mishare.connectivity" && scheme == "market") {
-                val stack = Throwable().stackTrace
-                val relevantFrames = stack.take(15).joinToString("\n  ") { "${it.className}.${it.methodName}:${it.lineNumber}" }
-                Log.w(TAG, "[DIAG-STACK] Mi Share market:// call stack:\n  $relevantFrames")
-            }
-
-            // Also dump extras for relevant intents
-            if (isRelevant && intent.extras != null && !intent.extras!!.isEmpty) {
-                for (key in intent.extras!!.keySet()) {
-                    val value = intent.extras!!.get(key)
-                    Log.d(TAG, "[DIAG]   extra: $key = $value (${value?.javaClass?.simpleName})")
-                }
-            }
-
-            XposedBridge.log("[$TAG] $source: data=$data pkg=$pkg comp=$comp caller=$caller")
+        // Log stack trace for Mi Share market:// calls to find URL conversion point
+        if (caller == "com.miui.mishare.connectivity" && scheme == "market") {
+            val stack = Throwable().stackTrace
+            val relevantFrames = stack.take(15).joinToString("\n  ") { "${it.className}.${it.methodName}:${it.lineNumber}" }
+            Log.w(TAG, "[DIAG-STACK] Mi Share market:// call stack:\n  $relevantFrames")
         }
+
+        // Also dump extras for relevant intents
+        if (intent.extras != null && !intent.extras!!.isEmpty) {
+            for (key in intent.extras!!.keySet()) {
+                val value = intent.extras!!.get(key)
+                Log.d(TAG, "[DIAG]   extra: $key = $value (${value?.javaClass?.simpleName})")
+            }
+        }
+
+        XposedBridge.log("[$TAG] $source: data=$data pkg=$pkg comp=$comp caller=$caller")
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -396,14 +379,7 @@ class MainHook : IXposedHookLoadPackage {
                 String::class.java, Int::class.javaPrimitiveType!!,
                 object : XC_MethodHook() {
                     override fun beforeHookedMethod(param: MethodHookParam) {
-                        val pkgName = param.args[0] as? String ?: return
-                        if (XiaomiPackageList.isXiaomiBrowser(pkgName)) {
-                            // Don't fake when the package queries itself
-                            // (e.g. browser checks its own signatures on startup)
-                            if (android.app.AndroidAppHelper.currentPackageName() == pkgName) return
-                            param.result = buildFakePackageInfo(pkgName)
-                            Log.d(TAG, "[PackageManager] Faked getPackageInfo: $pkgName")
-                        }
+                        fakeIfBrowserPackage(param) { buildFakePackageInfo(it) }
                     }
                 })
             Log.i(TAG, "[PackageManager] Hooked getPackageInfo(String, int)")
@@ -420,12 +396,7 @@ class MainHook : IXposedHookLoadPackage {
                 PackageManager.PackageInfoFlags::class.java,
                 object : XC_MethodHook() {
                     override fun beforeHookedMethod(param: MethodHookParam) {
-                        val pkgName = param.args[0] as? String ?: return
-                        if (XiaomiPackageList.isXiaomiBrowser(pkgName)) {
-                            if (android.app.AndroidAppHelper.currentPackageName() == pkgName) return
-                            param.result = buildFakePackageInfo(pkgName)
-                            Log.d(TAG, "[PackageManager] Faked getPackageInfo(flags): $pkgName")
-                        }
+                        fakeIfBrowserPackage(param) { buildFakePackageInfo(it) }
                     }
                 })
             Log.i(TAG, "[PackageManager] Hooked getPackageInfo(String, PackageInfoFlags)")
@@ -441,12 +412,7 @@ class MainHook : IXposedHookLoadPackage {
                 String::class.java, Int::class.javaPrimitiveType!!,
                 object : XC_MethodHook() {
                     override fun beforeHookedMethod(param: MethodHookParam) {
-                        val pkgName = param.args[0] as? String ?: return
-                        if (XiaomiPackageList.isXiaomiBrowser(pkgName)) {
-                            if (android.app.AndroidAppHelper.currentPackageName() == pkgName) return
-                            param.result = buildFakeApplicationInfo(pkgName)
-                            Log.d(TAG, "[PackageManager] Faked getApplicationInfo: $pkgName")
-                        }
+                        fakeIfBrowserPackage(param) { buildFakeApplicationInfo(it) }
                     }
                 })
             Log.i(TAG, "[PackageManager] Hooked getApplicationInfo(String, int)")
@@ -463,12 +429,7 @@ class MainHook : IXposedHookLoadPackage {
                 PackageManager.ApplicationInfoFlags::class.java,
                 object : XC_MethodHook() {
                     override fun beforeHookedMethod(param: MethodHookParam) {
-                        val pkgName = param.args[0] as? String ?: return
-                        if (XiaomiPackageList.isXiaomiBrowser(pkgName)) {
-                            if (android.app.AndroidAppHelper.currentPackageName() == pkgName) return
-                            param.result = buildFakeApplicationInfo(pkgName)
-                            Log.d(TAG, "[PackageManager] Faked getApplicationInfo(flags): $pkgName")
-                        }
+                        fakeIfBrowserPackage(param) { buildFakeApplicationInfo(it) }
                     }
                 })
             Log.i(TAG, "[PackageManager] Hooked getApplicationInfo(String, ApplicationInfoFlags)")
@@ -576,9 +537,30 @@ class MainHook : IXposedHookLoadPackage {
         val ai = android.content.pm.ApplicationInfo()
         ai.packageName = packageName
         ai.flags = android.content.pm.ApplicationInfo.FLAG_SYSTEM
-        ai.sourceDir = "/system/app/MiBrowserStub/MiBrowserStub.apk"
-        ai.publicSourceDir = ai.sourceDir
+        // ponytail: sourceDir must start with "/system" to satisfy
+        // Android 16's AppRestrictionController.isSystemModule() check
+        // (called from system_server, so the self-query guard doesn't help).
+        // The actual path is a convention — nothing reads from it because
+        // the self-query guard prevents the browser process from hitting
+        // this fake ApplicationInfo.
+        val stubPath = "/system/app/${packageName}/${packageName}.apk"
+        ai.sourceDir = stubPath
+        ai.publicSourceDir = stubPath
         return ai
+    }
+
+    /**
+     * Common guard for all 4 PackageManager hooks: skip faking when
+     * the calling package queries itself.
+     */
+    private fun fakeIfBrowserPackage(param: XC_MethodHook.MethodHookParam, builder: (String) -> Any) {
+        val pkgName = param.args[0] as? String ?: return
+        if (!XiaomiPackageList.isXiaomiBrowser(pkgName)) return
+        // ponytail: don't fake when the package queries itself
+        // (e.g. browser checks its own signatures on startup)
+        if (android.app.AndroidAppHelper.currentPackageName() == pkgName) return
+        param.result = builder(pkgName)
+        Log.d(TAG, "[PackageManager] Faked ${param.method.name}: $pkgName")
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -697,6 +679,7 @@ class MainHook : IXposedHookLoadPackage {
         }
     }
 
+    // ponytail: intentionally separate from hookClipboardNotificationIcon — runs in Mi Share process
     private fun hookMiShareNotificationIcon() {
         try {
             XposedHelpers.findAndHookMethod(
@@ -948,6 +931,7 @@ class MainHook : IXposedHookLoadPackage {
         }
     }
 
+    // ponytail: intentionally separate from hookMiShareNotificationIcon — runs in AI Engine process
     private fun hookClipboardNotificationIcon() {
         try {
             XposedHelpers.findAndHookMethod(
@@ -1361,6 +1345,9 @@ class MainHook : IXposedHookLoadPackage {
                 ) {
                     XposedBridge.hookMethod(method, object : XC_MethodHook() {
                         override fun beforeHookedMethod(param: MethodHookParam) {
+                            // ponytail: only return true if we actually rewrote a browser intent,
+                            // otherwise let the original method proceed normally.
+                            var rewroteBrowserIntent = false
                             for (arg in param.args) {
                                 if (arg is Intent) {
                                     val pkg = arg.`package`
@@ -1386,11 +1373,13 @@ class MainHook : IXposedHookLoadPackage {
                                             arg.setPackage(null)
                                         }
                                         arg.component = null
+                                        rewroteBrowserIntent = true
                                     }
                                 }
                             }
-                            // Return true so the intent can proceed
-                            param.result = true
+                            if (rewroteBrowserIntent) {
+                                param.result = true
+                            }
                         }
                     })
                     Log.i(TAG, "[VoiceAssist] Hooked $className.${method.name} (returns boolean, has Intent param)")
