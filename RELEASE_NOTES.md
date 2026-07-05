@@ -1,10 +1,28 @@
 # Release Notes
 
-## v1.2.8 (current)
+## v1.2.9
 
 ### 中文
 
-v1.2.7 修复 AI Engine 复制直达（快递、地址）聚焦通知图标被错误替换的问题。
+**修复：** 启用模块后小米浏览器启动崩溃的问题。
+
+感谢 [@ChenXiaoming233](https://github.com/ChenXiaoming233) 在 [#11](https://github.com/DuhMatt/Fxxk-MiBrowser/issues/11) 提供崩溃日志协助定位问题。
+
+#### Bug 修复
+
+- **修复** 浏览器启动崩溃 — 模块的 `PackageManager` hook 在浏览器进程内拦截了自身对 `getPackageInfo` 的调用，返回的假 `PackageInfo` 缺少 `signatures` 字段，浏览器启动时 `AppSignatureUtil.getSignature()` 读取到 null 数组导致 NPE 崩溃。**根因：** `buildFakePackageInfo()` 未填充 `signatures` 字段。**修复：** `hookPackageManager` 中增加自查询放行判断——当调用进程包名等于查询目标包名时跳过拦截，放行真实数据。
+
+### English
+
+**Fix:** Browser crash on startup when the module is enabled.
+
+Thanks to [@ChenXiaoming233](https://github.com/ChenXiaoming233) for providing crash logs in [#11](https://github.com/DuhMatt/Fxxk-MiBrowser/issues/11) that helped identify the root cause.
+
+#### Bug Fixes
+
+- **Fix** browser startup crash — the `PackageManager` hook intercepted the browser's own `getPackageInfo` call and returned a fake `PackageInfo` without `signatures`. On browser startup, `AppSignatureUtil.getSignature()` reads the null array → NPE crash. **Root cause:** `buildFakePackageInfo()` did not populate the `signatures` field. **Fix:** Added a self-query guard in `hookPackageManager` — when the calling package name matches the queried target, skip interception and let real data through.
+
+### v1.2.8 (v1.2.9 replaces this release)
 
 感谢 [@MrJonhShelby](https://github.com/MrJonhShelby) 在 [#8](https://github.com/DuhMatt/Fxxk-MiBrowser/issues/8) 报告此问题。
 
