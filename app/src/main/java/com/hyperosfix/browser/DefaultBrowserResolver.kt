@@ -104,46 +104,13 @@ object DefaultBrowserResolver {
         )
     }
 
-    /**
-     * Create an Intent that will show the system browser chooser dialog.
-     * This bypasses the forced component/package targeting.
-     */
-    fun buildChooserIntent(originalData: Uri): Intent {
+    // ponytail: single builder — pass pkg for specific target, omit for chooser intent.
+    // buildOpenBrowserIntent was deleted (unused).
+    fun buildWebIntent(originalData: Uri, pkg: String? = null): Intent {
         return Intent(Intent.ACTION_VIEW, originalData).apply {
             addCategory(Intent.CATEGORY_BROWSABLE)
             addCategory(Intent.CATEGORY_DEFAULT)
-            // Explicitly DO NOT set package or component — let the system resolve
-            // Use Intent.createChooser to force the disambiguation dialog
-        }
-    }
-
-    /**
-     * Build an Intent targeting a specific browser package.
-     * Only used as a fallback; normally we let the chooser decide.
-     */
-    fun buildSpecificBrowserIntent(originalData: Uri, pkg: String): Intent {
-        return Intent(Intent.ACTION_VIEW, originalData).apply {
-            addCategory(Intent.CATEGORY_BROWSABLE)
-            addCategory(Intent.CATEGORY_DEFAULT)
-            setPackage(pkg)
-        }
-    }
-
-    /**
-     * Build an Intent that opens the default browser's main activity
-     * (no specific URL). Used as a fallback when the original URL was
-     * lost (e.g., converted to a market:// download link by Mi Share).
-     *
-     * Uses https:// as a neutral entry point — browsers always handle
-     * this scheme, unlike about:blank which many browsers reject
-     * (resulting in START_ABORTED / result code -91).
-     */
-    fun buildOpenBrowserIntent(pkg: String): Intent {
-        return Intent(Intent.ACTION_VIEW, Uri.parse("https://")).apply {
-            addCategory(Intent.CATEGORY_BROWSABLE)
-            addCategory(Intent.CATEGORY_DEFAULT)
-            setPackage(pkg)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (pkg != null) setPackage(pkg)
         }
     }
 }

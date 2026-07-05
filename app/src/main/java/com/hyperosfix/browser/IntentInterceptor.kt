@@ -11,7 +11,6 @@ import de.robv.android.xposed.XC_MethodHook
 import java.lang.reflect.Modifier
 import java.util.Collections
 import java.util.IdentityHashMap
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Core interception logic for web-link intents that are being forced
@@ -30,8 +29,8 @@ import java.util.concurrent.ConcurrentHashMap
  *
  * ## Infinite-loop prevention
  *
- * A [ThreadLocal] flag + a per-Intent-id [ConcurrentHashMap] guard
- * ensures that re-dispatching does not re-trigger the hook on the same Intent.
+ * A [ThreadLocal] flag ensures that re-dispatching does not re-trigger the hook
+ * on the same Intent.
  *
  * ## Scope
  *
@@ -43,13 +42,9 @@ object IntentInterceptor {
     private const val TAG = "HyperOSBrowserFix_Intent"
 
     // ── Re-entrancy guard ────────────────────────────────────────────────
-    // We use TWO layers to be safe:
-    // 1. A ThreadLocal counter for simple same-thread recursion.
-    // 2. A ConcurrentHashMap of "seen" Intent identity hash codes, cleared
-    //    periodically to prevent memory leak.
+    // A ThreadLocal flag prevents re-entrant processing of the same intent.
 
     private val threadGuard = ThreadLocal<Boolean>()
-    private val seenIntentIds = ConcurrentHashMap.newKeySet<Int>()
 
     @Volatile
     private var lastXiaomiSourceUrl: Uri? = null
@@ -60,8 +55,6 @@ object IntentInterceptor {
     @Volatile
     private var lastXiaomiSourceLabel: String = "unknown"
 
-    /** Max size before we clear the seen-intents set to avoid memory leak. */
-    private const val MAX_SEEN_INTENTS = 200
     private const val XIAOMI_SOURCE_URL_CACHE_MS = 2 * 60 * 1000L
     private const val MAX_OBJECT_SCAN_DEPTH = 4
 
@@ -144,9 +137,9 @@ object IntentInterceptor {
         }
 
         val replacement = if (browser.isDefault) {
-            DefaultBrowserResolver.buildSpecificBrowserIntent(effectiveData, browser.packageName)
+            DefaultBrowserResolver.buildWebIntent(effectiveData, browser.packageName)
         } else {
-            Intent.createChooser(DefaultBrowserResolver.buildChooserIntent(effectiveData), "Open with")
+            Intent.createChooser(DefaultBrowserResolver.buildWebIntent(effectiveData), "Open with")
         }.apply {
             flags = cleaned.flags
             if (context !is Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -181,14 +174,14 @@ object IntentInterceptor {
      * the safest way to restore the original link.
      */
     internal fun rememberWebUrlFromIntent(intent: Intent, source: String) {
-        val url = extractLikelyWebUriFromIntent(intent)
+        val url = extractWebUriFromIntent(intent, filter = { isLikelyUserWebUrl(it) })
         if (url != null) {
             rememberWebUrl(url, source)
         }
     }
 
     internal fun rememberWebUrlFromValue(value: Any?, source: String) {
-        val url = extractLikelyWebUriFromValue(value, newVisitedSet())
+        val url = extractWebUriFromValue(value, newVisitedSet(), filter = { isLikelyUserWebUrl(it) })
         if (url != null) {
             rememberWebUrl(url, source)
         }
@@ -697,8 +690,10 @@ object IntentInterceptor {
         }
     }
 
-    private fun extractWebUriFromIntent(intent: Intent): Uri? {
-        extractWebUri(intent.data?.toString())?.let { return it }
+    private fun extractWebUriFromIntent(intent: Intent, filter: ((Uri) -> Boolean)? = null): Uri? {
+        extractWebUri(intent.data?.toString())?.let { uri ->
+            if (filter == null || filter(uri)) return uri
+        }
 
         val knownExtras = arrayOf(
             Intent.EXTRA_TEXT,
@@ -717,80 +712,35 @@ object IntentInterceptor {
         )
         for (key in knownExtras) {
             val value = runCatching { intent.extras?.get(key) }.getOrNull()
-            extractWebUriFromValue(value, newVisitedSet())?.let { return it }
+            extractWebUriFromValue(value, newVisitedSet(), filter = filter)?.let { return it }
         }
 
-        extractWebUriFromBundle(intent.extras)?.let { return it }
-        extractWebUriFromClipData(intent.clipData)?.let { return it }
+        extractWebUriFromBundle(intent.extras, filter = filter)?.let { return it }
+        extractWebUriFromClipData(intent.clipData, filter = filter)?.let { return it }
 
         return null
     }
 
-    private fun extractLikelyWebUriFromIntent(intent: Intent): Uri? {
-        extractWebUri(intent.data?.toString())?.takeIf { isLikelyUserWebUrl(it) }?.let { return it }
-
-        val knownExtras = arrayOf(
-            Intent.EXTRA_TEXT,
-            Intent.EXTRA_HTML_TEXT,
-            Intent.EXTRA_REFERRER_NAME,
-            "android.intent.extra.REFERRER",
-            "url",
-            "uri",
-            "link",
-            "target_url",
-            "referrer",
-            "text",
-            "share_url",
-            "content",
-            "android.intent.extra.TEXT"
-        )
-        for (key in knownExtras) {
-            val value = runCatching { intent.extras?.get(key) }.getOrNull()
-            extractLikelyWebUriFromValue(value, newVisitedSet())?.let { return it }
-        }
-
-        extractLikelyWebUriFromBundle(intent.extras)?.let { return it }
-        extractLikelyWebUriFromClipData(intent.clipData)?.let { return it }
-
-        return null
-    }
-
-    private fun extractWebUriFromBundle(bundle: Bundle?): Uri? {
+    private fun extractWebUriFromBundle(bundle: Bundle?, filter: ((Uri) -> Boolean)? = null): Uri? {
         if (bundle == null) return null
         for (key in bundle.keySet()) {
             val value = runCatching { bundle.get(key) }.getOrNull()
-            extractWebUriFromValue(value, newVisitedSet())?.let { return it }
+            extractWebUriFromValue(value, newVisitedSet(), filter = filter)?.let { return it }
         }
         return null
     }
 
-    private fun extractLikelyWebUriFromBundle(bundle: Bundle?): Uri? {
-        if (bundle == null) return null
-        for (key in bundle.keySet()) {
-            val value = runCatching { bundle.get(key) }.getOrNull()
-            extractLikelyWebUriFromValue(value, newVisitedSet())?.let { return it }
-        }
-        return null
-    }
-
-    private fun extractWebUriFromClipData(clipData: ClipData?): Uri? {
+    private fun extractWebUriFromClipData(clipData: ClipData?, filter: ((Uri) -> Boolean)? = null): Uri? {
         if (clipData == null) return null
         for (i in 0 until clipData.itemCount) {
             val item = clipData.getItemAt(i) ?: continue
-            extractWebUri(item.uri?.toString())?.let { return it }
-            extractWebUri(item.text?.toString())?.let { return it }
-            item.intent?.let { extractWebUriFromIntent(it)?.let { uri -> return uri } }
-        }
-        return null
-    }
-
-    private fun extractLikelyWebUriFromClipData(clipData: ClipData?): Uri? {
-        if (clipData == null) return null
-        for (i in 0 until clipData.itemCount) {
-            val item = clipData.getItemAt(i) ?: continue
-            extractWebUri(item.uri?.toString())?.takeIf { isLikelyUserWebUrl(it) }?.let { return it }
-            extractWebUri(item.text?.toString())?.takeIf { isLikelyUserWebUrl(it) }?.let { return it }
-            item.intent?.let { extractLikelyWebUriFromIntent(it)?.let { uri -> return uri } }
+            extractWebUri(item.uri?.toString())?.let { uri ->
+                if (filter == null || filter(uri)) return uri
+            }
+            extractWebUri(item.text?.toString())?.let { uri ->
+                if (filter == null || filter(uri)) return uri
+            }
+            item.intent?.let { extractWebUriFromIntent(it, filter = filter)?.let { uri -> return uri } }
         }
         return null
     }
@@ -798,51 +748,32 @@ object IntentInterceptor {
     private fun extractWebUriFromValue(
         value: Any?,
         visited: MutableSet<Any>,
-        depth: Int = 0
+        depth: Int = 0,
+        filter: ((Uri) -> Boolean)? = null
     ): Uri? {
-        return when (value) {
+        val uri = when (value) {
             null -> null
             is Uri -> extractWebUri(value.toString())
-            is Intent -> extractWebUriFromIntent(value)
-            is Bundle -> extractWebUriFromBundle(value)
+            is Intent -> extractWebUriFromIntent(value, filter = filter)
+            is Bundle -> extractWebUriFromBundle(value, filter = filter)
             is CharSequence -> extractWebUri(value.toString())
             is Array<*> -> value.asSequence().mapNotNull {
-                extractWebUriFromValue(it, visited, depth + 1)
+                extractWebUriFromValue(it, visited, depth + 1, filter = filter)
             }.firstOrNull()
             is Iterable<*> -> value.asSequence().mapNotNull {
-                extractWebUriFromValue(it, visited, depth + 1)
+                extractWebUriFromValue(it, visited, depth + 1, filter = filter)
             }.firstOrNull()
             else -> extractWebUri(value.toString())
-                ?: extractWebUriFromObjectFields(value, visited, depth)
+                ?: extractWebUriFromObjectFields(value, visited, depth, filter = filter)
         }
-    }
-
-    private fun extractLikelyWebUriFromValue(
-        value: Any?,
-        visited: MutableSet<Any>,
-        depth: Int = 0
-    ): Uri? {
-        return when (value) {
-            null -> null
-            is Uri -> extractWebUri(value.toString())?.takeIf { isLikelyUserWebUrl(it) }
-            is Intent -> extractLikelyWebUriFromIntent(value)
-            is Bundle -> extractLikelyWebUriFromBundle(value)
-            is CharSequence -> extractWebUri(value.toString())?.takeIf { isLikelyUserWebUrl(it) }
-            is Array<*> -> value.asSequence().mapNotNull {
-                extractLikelyWebUriFromValue(it, visited, depth + 1)
-            }.firstOrNull()
-            is Iterable<*> -> value.asSequence().mapNotNull {
-                extractLikelyWebUriFromValue(it, visited, depth + 1)
-            }.firstOrNull()
-            else -> extractWebUri(value.toString())?.takeIf { isLikelyUserWebUrl(it) }
-                ?: extractLikelyWebUriFromObjectFields(value, visited, depth)
-        }
+        return if (filter != null && uri != null && !filter(uri)) null else uri
     }
 
     private fun extractWebUriFromObjectFields(
         value: Any,
         visited: MutableSet<Any>,
-        depth: Int
+        depth: Int,
+        filter: ((Uri) -> Boolean)? = null
     ): Uri? {
         if (depth >= MAX_OBJECT_SCAN_DEPTH) return null
         if (!visited.add(value)) return null
@@ -864,44 +795,8 @@ object IntentInterceptor {
                     field.get(value)
                 }.getOrNull() ?: continue
 
-                extractWebUriFromValue(fieldValue, visited, depth + 1)?.let {
+                extractWebUriFromValue(fieldValue, visited, depth + 1, filter = filter)?.let {
                     Log.i(TAG, "Recovered URL from object field ${ownerClass.name}.${field.name}: $it")
-                    return it
-                }
-            }
-            clazz = clazz.superclass
-        }
-
-        return null
-    }
-
-    private fun extractLikelyWebUriFromObjectFields(
-        value: Any,
-        visited: MutableSet<Any>,
-        depth: Int
-    ): Uri? {
-        if (depth >= MAX_OBJECT_SCAN_DEPTH) return null
-        if (!visited.add(value)) return null
-
-        var clazz: Class<*>? = value.javaClass
-        val className = clazz?.name ?: return null
-        if (shouldSkipObjectFieldScan(className)) {
-            return null
-        }
-
-        while (clazz != null && clazz != Any::class.java) {
-            val ownerName = clazz.name
-            if (shouldSkipObjectFieldScan(ownerName)) break
-            for (field in clazz.declaredFields) {
-                if (Modifier.isStatic(field.modifiers)) continue
-                val ownerClass = clazz
-                val fieldValue = runCatching {
-                    field.isAccessible = true
-                    field.get(value)
-                }.getOrNull() ?: continue
-
-                extractLikelyWebUriFromValue(fieldValue, visited, depth + 1)?.let {
-                    Log.i(TAG, "Recovered likely user URL from object field ${ownerClass.name}.${field.name}: $it")
                     return it
                 }
             }
@@ -974,24 +869,10 @@ object IntentInterceptor {
      * Returns false if we are already processing this intent (re-entrancy).
      */
     private fun enterGuard(intent: Intent): Boolean {
-        val id = System.identityHashCode(intent)
-
         // Thread-local check
         if (threadGuard.get() == true) {
             Log.d(TAG, "Re-entrancy guard: skipping (same thread already processing)")
             return false
-        }
-
-        // Cross-thread check
-        if (!seenIntentIds.add(id)) {
-            Log.d(TAG, "Re-entrancy guard: skipping (intent already seen: $id)")
-            return false
-        }
-
-        // Prevent unbounded growth of seenIntentIds
-        if (seenIntentIds.size > MAX_SEEN_INTENTS) {
-            Log.d(TAG, "Clearing seen intent cache (size=${seenIntentIds.size})")
-            seenIntentIds.clear()
         }
 
         threadGuard.set(true)
@@ -1000,7 +881,5 @@ object IntentInterceptor {
 
     private fun exitGuard(@Suppress("UNUSED_PARAMETER") intent: Intent) {
         threadGuard.remove()
-        // Keep the intent in seenIntentIds briefly to prevent rapid re-entry
-        // It will be cleaned up when the cache grows too large.
     }
 }

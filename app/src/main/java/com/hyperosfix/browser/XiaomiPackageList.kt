@@ -146,9 +146,12 @@ object XiaomiPackageList {
      */
     fun isXiaomiSystemApp(pkg: String?): Boolean {
         if (pkg == null) return false
+        // ponytail: explicit whitelist + known prefixes only. "com.mi." is
+        // intentionally excluded — it matches too many third-party apps
+        // (com.microsoft, com.midas, etc.). Add known Xiaomi com.mi.*
+        // packages to ALL_XIAOMI_SYSTEM_APPS explicitly.
         return pkg in ALL_XIAOMI_SYSTEM_APPS ||
             pkg.startsWith("com.miui.") ||
-            pkg.startsWith("com.xiaomi.") ||
-            pkg.startsWith("com.mi.")
+            pkg.startsWith("com.xiaomi.")
     }
 }
