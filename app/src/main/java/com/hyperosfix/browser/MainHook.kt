@@ -398,6 +398,9 @@ class MainHook : IXposedHookLoadPackage {
                     override fun beforeHookedMethod(param: MethodHookParam) {
                         val pkgName = param.args[0] as? String ?: return
                         if (XiaomiPackageList.isXiaomiBrowser(pkgName)) {
+                            // Don't fake when the package queries itself
+                            // (e.g. browser checks its own signatures on startup)
+                            if (android.app.AndroidAppHelper.currentPackageName() == pkgName) return
                             param.result = buildFakePackageInfo(pkgName)
                             Log.d(TAG, "[PackageManager] Faked getPackageInfo: $pkgName")
                         }
@@ -419,6 +422,7 @@ class MainHook : IXposedHookLoadPackage {
                     override fun beforeHookedMethod(param: MethodHookParam) {
                         val pkgName = param.args[0] as? String ?: return
                         if (XiaomiPackageList.isXiaomiBrowser(pkgName)) {
+                            if (android.app.AndroidAppHelper.currentPackageName() == pkgName) return
                             param.result = buildFakePackageInfo(pkgName)
                             Log.d(TAG, "[PackageManager] Faked getPackageInfo(flags): $pkgName")
                         }
@@ -439,6 +443,7 @@ class MainHook : IXposedHookLoadPackage {
                     override fun beforeHookedMethod(param: MethodHookParam) {
                         val pkgName = param.args[0] as? String ?: return
                         if (XiaomiPackageList.isXiaomiBrowser(pkgName)) {
+                            if (android.app.AndroidAppHelper.currentPackageName() == pkgName) return
                             param.result = buildFakeApplicationInfo(pkgName)
                             Log.d(TAG, "[PackageManager] Faked getApplicationInfo: $pkgName")
                         }
@@ -460,6 +465,7 @@ class MainHook : IXposedHookLoadPackage {
                     override fun beforeHookedMethod(param: MethodHookParam) {
                         val pkgName = param.args[0] as? String ?: return
                         if (XiaomiPackageList.isXiaomiBrowser(pkgName)) {
+                            if (android.app.AndroidAppHelper.currentPackageName() == pkgName) return
                             param.result = buildFakeApplicationInfo(pkgName)
                             Log.d(TAG, "[PackageManager] Faked getApplicationInfo(flags): $pkgName")
                         }
