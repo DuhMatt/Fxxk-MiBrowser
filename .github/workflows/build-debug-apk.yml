@@ -52,7 +52,7 @@ jobs:
           test -n "$RELEASE_KEY_ALIAS"
           test -n "$RELEASE_KEY_PASSWORD"
           mkdir -p signing
-          printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 --decode > signing/hyperos-mishare-release.jks
+          printf '%s' "$RELEASE_KEYSTORE_BASE64" | tr -d '\r\n\t ' | base64 --decode > signing/hyperos-mishare-release.jks
           cat > signing/release-keystore.properties <<EOF
           storeFile=../signing/hyperos-mishare-release.jks
           storePassword=$RELEASE_STORE_PASSWORD
