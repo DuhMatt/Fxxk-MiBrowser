@@ -1,4 +1,4 @@
-name: Build Debug APK
+name: Build Debug APK (Release-Signed)
 
 on:
   workflow_dispatch:
@@ -24,18 +24,21 @@ jobs:
 
       - name: Create signing properties
         run: |
-          cat > signing/release-keystore.properties << 'PROPS_EOF'
+          cat > signing/release-keystore.properties << PROPS_EOF
           storeFile=../signing/release-keystore.jks
           storePassword=${{ secrets.RELEASE_STORE_PASSWORD }}
           keyAlias=${{ secrets.RELEASE_KEY_ALIAS }}
           keyPassword=${{ secrets.RELEASE_KEY_PASSWORD }}
           PROPS_EOF
 
-      - name: Build release APK
-        run: ./gradlew assembleRelease
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build debug APK (signed with release key)
+        run: chmod +x gradlew && ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: fxxk-mibrowser-debug
-          path: app/build/outputs/apk/release/app-release.apk
+          path: app/build/outputs/apk/debug/app-debug.apk
