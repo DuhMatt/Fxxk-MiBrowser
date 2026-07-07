@@ -1,27 +1,5 @@
 # Release Notes
 
-## v1.2.10
-
-### 中文
-
-**修复：** 澎湃3 超级小爱识屏后，链接被错误跳转到小米商店下载邮件 App 的问题。
-
-感谢 [@HANKANTE](https://github.com/HANKANTE) 在 [#13](https://github.com/DuhMatt/Fxxk-MiBrowser/issues/13) 报告并提供运行时日志协助定位问题。
-
-#### Bug 修复
-
-- **修复** 澎湃3 小爱识屏 `mimarket://` 漏拦截 — HyperOS 3 的 VoiceAssist 在处理完浏览器 Intent 后，会额外发一条 `mimarket://details?ref=xiaoai_ScreenRecognition&id=com.android.email` Intent。模块原有的 `isXiaomiBrowserDownloadUri()` 只检查 `id=com.android.browser`，漏掉了非浏览器包名的 market 意图。**修复：** `shouldIntercept()` 的 Case E（`mi*://`）和 Case G（`market://`）各增加一个回退条件——当调用方是小米系统 App 且模块有近期缓存的 URL 时，同样拦截并重定向到默认浏览器。
-
-### English
-
-**Fix:** Links from Super XiaoAi screen recognition on HyperOS 3 no longer redirect to Xiaomi's App Store to download the email app.
-
-Thanks to [@HANKANTE](https://github.com/HANKANTE) for reporting in [#13](https://github.com/DuhMatt/Fxxk-MiBrowser/issues/13) and providing runtime logs.
-
-#### Bug Fixes
-
-- **Fix** unpresented `mimarket://` interception on HyperOS 3 — VoiceAssist fires an additional `mimarket://details?ref=xiaoai_ScreenRecognition&id=com.android.email` intent after the browser intent. The existing `isXiaomiBrowserDownloadUri()` only checks `id=com.android.browser`, missing non-browser market intents. **Fix:** Added a fallback condition in `shouldIntercept()` Cases E (`mi*://`) and G (`market://`) — also intercept when the caller is a Xiaomi system app and the module has a recent cached URL, then redirect to the default browser.
-
 ## v1.2.9
 
 ### 中文
