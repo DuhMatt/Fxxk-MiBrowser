@@ -289,7 +289,13 @@ object IntentInterceptor {
         // Case E: mi:// scheme — Xiaomi's custom URL wrapper
         // (used by Xiaomi AI Engine and voice assistant)
         if ((scheme == "mi" || scheme.startsWith("mi")) &&
-            (isXiaomiBrowserDownloadUri(data) || recoverUrlFromMiScheme(intent) != null)) {
+            (isXiaomiBrowserDownloadUri(data) ||
+                recoverUrlFromMiScheme(intent) != null ||
+                // On HyperOS 3, XiaoAi may fire a mimarket:// intent for an app
+                // unrelated to the browser (e.g. id=com.android.email) after the
+                // original URL has already been cached. Intercept when we have a
+                // recent cached URL and the caller is a Xiaomi system app.
+                (XiaomiPackageList.isXiaomiSystemApp(callerPackage) && hasRecentXiaomiSourceUrl()))) {
             Log.d(TAG, "Will intercept (mi:// scheme): caller=$callerPackage, data=$data")
             return true
         }
@@ -300,12 +306,13 @@ object IntentInterceptor {
             return true
         }
 
-        // Case G: market:// URL with id=<xiaomi_browser> but no explicit package target.
-        // This is what Mi Share does: it calls startActivity(market://details?id=com.android.browser)
-        // with pkg=null. The URL has already been converted to a market link.
+        // Case G: market:// URL with no explicit package target.
+        // Mi Share converts HTTP URLs to market:// details links.
+        // On HyperOS 3, XiaoAi may also fire market:// for non-browser apps.
         if (scheme == "market" && targetPkg == null && targetComponent == null) {
-            if (isXiaomiBrowserDownloadUri(data)) {
-                Log.d(TAG, "Will intercept (market://id=browser): caller=$callerPackage, data=$data")
+            if (isXiaomiBrowserDownloadUri(data) ||
+                (XiaomiPackageList.isXiaomiSystemApp(callerPackage) && hasRecentXiaomiSourceUrl())) {
+                Log.d(TAG, "Will intercept (market://, no target): caller=$callerPackage, data=$data")
                 return true
             }
         }
