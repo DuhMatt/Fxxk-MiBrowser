@@ -38,15 +38,6 @@ android {
     }
 
     buildTypes {
-        debug {
-            // Use release signing key in CI so the debug APK can be installed
-            // over the release-signed production version during testing.
-            if (keystorePropsFile.exists()) {
-                signingConfig = signingConfigs.getByName("release")
-                println("[Fxxk-MiBrowser] Debug build will be signed with release key: " +
-                    keystoreProps.getProperty("storeFile"))
-            }
-        }
         release {
             isMinifyEnabled = false
             proguardFiles(
