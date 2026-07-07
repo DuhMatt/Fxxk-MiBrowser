@@ -31,6 +31,8 @@ Prevent HyperOS from forcing links into Xiaomi Browser; redirect to the system d
 2. 系统设置里连接小米路由器后，“管理小米路由”入口强制跳转小米浏览器。
 3. 小爱识屏 / 复制直达识别到网页链接后，点击链接仍然调用小米浏览器。
 
+小爱识屏场景目前实测通过的超级小爱版本为 `7.13.23.0020`。已知部分旧版本超级小爱在“小爱识屏”识别 URL 的场景下，使用本模块时仍可能出现异常跳转；如果你遇到小爱识屏 URL 识别跳转 bug，建议先尝试更新超级小爱版本。
+
 ### 计划加入的功能
   - 修复传送门搜索功能的浏览器跳转逻辑
     
@@ -109,6 +111,8 @@ mimarket://details?id=com.android.browser
 -> https://baidu.com
 -> 用户设置的默认浏览器
 ```
+
+以上链路在超级小爱 `7.13.23.0020` 上已测试通过。若你的设备仍在使用旧版本超级小爱，并且只在“小爱识屏”场景下出现 URL 跳转异常，请优先尝试更新超级小爱后再反馈。
 
 ### 使用要求
 
@@ -189,6 +193,8 @@ The module does not hard-code Chrome, Edge, Firefox, Via, or any other browser. 
 1. Mi Share opens shared web links with Xiaomi Browser.
 2. The "Manage Xiaomi router" entry in system Wi-Fi settings opens Xiaomi Browser.
 3. Super XiaoAi screen recognition / Clipboard shortcut opens recognized web links with Xiaomi Browser.
+
+The currently verified Super XiaoAi version for the screen-recognition scenario is `7.13.23.0020`. Some older Super XiaoAi builds are known to still mis-handle URL jumps in the XiaoAi screen-recognition flow even with this module enabled. If you hit a URL-recognition redirect bug only in XiaoAi screen recognition, please try updating Super XiaoAi first.
 
 ### Planned Features
   - Fix the browser redirection logic for “Copy Direct”
