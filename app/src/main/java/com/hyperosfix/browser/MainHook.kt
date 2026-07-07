@@ -13,8 +13,8 @@ import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Bundle
-import android.util.Log
 import com.hyperosfix.browser.BuildConfig
+import com.hyperosfix.browser.ModuleLog as Log
 import de.robv.android.xposed.IXposedHookLoadPackage
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedBridge

@@ -13,6 +13,7 @@ val keystoreProps = Properties().apply {
         load(keystorePropsFile.inputStream())
     }
 }
+val hasReleaseSigning = keystorePropsFile.exists()
 
 android {
     namespace = "com.hyperosfix.browser"
@@ -38,13 +39,25 @@ android {
     }
 
     buildTypes {
+        debug {
+            versionNameSuffix = "-debuglog"
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+                println("[Fxxk-MiBrowser] Debug build will be signed with: " +
+                    keystoreProps.getProperty("storeFile"))
+            } else {
+                println("[Fxxk-MiBrowser] WARNING: signing/release-keystore.properties not found — " +
+                    "debug APK will be signed with the default debug keystore")
+            }
+        }
+
         release {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            if (keystorePropsFile.exists()) {
+            if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
                 println("[Fxxk-MiBrowser] Release build will be signed with: " +
                     keystoreProps.getProperty("storeFile"))
@@ -70,6 +83,7 @@ android {
 }
 
 dependencies {
+    implementation("androidx.core:core-ktx:1.15.0")
     // LSPosed / Xposed API — compileOnly, not bundled into APK
     compileOnly("de.robv.android.xposed:api:82")
 }

@@ -5,7 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.net.Uri
-import android.util.Log
+import com.hyperosfix.browser.ModuleLog as Log
 
 /**
  * Queries the system for the user's default browser.
