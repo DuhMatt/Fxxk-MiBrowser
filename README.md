@@ -31,8 +31,11 @@ Prevent HyperOS from forcing links into Xiaomi Browser; redirect to the system d
 2. 系统设置里连接小米路由器后，“管理小米路由”入口强制跳转小米浏览器。
 3. 小爱识屏 / 复制直达识别到网页链接后，点击链接仍然调用小米浏览器。
 
-小爱识屏场景目前实测通过的超级小爱版本为 `7.13.23.0020`。已知部分旧版本超级小爱在“小爱识屏”识别 URL 的场景下，使用本模块时仍可能出现异常跳转；如果你遇到小爱识屏 URL 识别跳转 bug，建议先尝试更新超级小爱版本，重启后再尝试小爱识屏的URL跳转测试。
-同理，其他作用域 app 目前虽然还没有收到明确的“旧版本导致 bug”反馈，但如果遇到相关问题，也建议先去小米应用商店把各个作用域 app 更新到最新版本后再测试。
+### 已知兼容性限制
+
+小爱识屏场景目前实测通过的超级小爱版本为 `7.13.23.0020`。已知部分旧版本超级小爱在“小爱识屏”识别 URL 的场景下，使用本模块时仍可能出现异常跳转；如果你遇到小爱识屏 URL 识别跳转 bug，请先将超级小爱更新到较新版本，重启后再复测。
+
+同理，其他作用域 app 目前虽然还没有收到明确的“旧版本导致 bug”反馈，但如果遇到相关问题，也建议先去小米应用商店把各个作用域 app 更新到最新版本后再测试。提交反馈时请附上系统、应用和 LSPosed 版本，以及相关日志。
 
 ### 计划加入的功能
   - 修复传送门搜索功能的浏览器跳转逻辑
@@ -183,7 +186,7 @@ HyperOS / MIUI 的内部实现经常变。这个模块只保证在上面列出�
 
 ## English
 
-Current version: `1.2.6`
+Current version: `1.2.9`
 
 This is an LSPosed module for HyperOS. It fixes one core problem: when Xiaomi system components receive a web link, they should not force it into Xiaomi Browser, and they should not open Xiaomi Market's browser download page when Xiaomi Browser is removed or disabled. The link should go to the browser the user selected as the Android default browser.
 
@@ -195,11 +198,13 @@ The module does not hard-code Chrome, Edge, Firefox, Via, or any other browser. 
 2. The "Manage Xiaomi router" entry in system Wi-Fi settings opens Xiaomi Browser.
 3. Super XiaoAi screen recognition / Clipboard shortcut opens recognized web links with Xiaomi Browser.
 
-The currently verified Super XiaoAi version for the screen-recognition scenario is `7.13.23.0020`. Some older Super XiaoAi builds are known to still mis-handle URL jumps in the XiaoAi screen-recognition flow even with this module enabled. If you hit a URL-recognition redirect bug only in XiaoAi screen recognition, please try updating Super XiaoAi first.
-The same advice applies to other scoped Xiaomi apps as well. There are no confirmed old-version bugs for those apps yet, but if you run into related problems, it is still worth updating the scoped apps from Xiaomi Market before reporting the issue.
+### Known Compatibility Limitation
+
+The currently verified Super XiaoAi version for the screen-recognition scenario is `7.13.23.0020`. Some older Super XiaoAi builds are known to still mis-handle URL jumps in the XiaoAi screen-recognition flow even with this module enabled. If you hit a URL-recognition redirect bug only in XiaoAi screen recognition, update Super XiaoAi first, reboot, and then retest.
+
+The same advice applies to other scoped Xiaomi apps as well. There are no confirmed old-version bugs for those apps yet, but if you run into related problems, it is still worth updating the scoped apps from Xiaomi Market before reporting the issue. Please include the system, app, and LSPosed versions plus relevant logs in a report.
 
 ### Planned Features
-  - Fix the browser redirection logic for “Copy Direct”
   - Fix the browser redirection logic for the “Portal Search” feature
 
 
