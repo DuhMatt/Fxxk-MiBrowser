@@ -1,0 +1,88 @@
+name: Bug report
+description: Report a reproducible compatibility or redirection problem.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please remove personal information from logs and screenshots before submitting.
+        For XiaoAi screen-recognition problems, update Super XiaoAi first and reboot before reporting.
+  - type: dropdown
+    id: feature
+    attributes:
+      label: Affected scenario
+      options:
+        - Mi Share link
+        - Xiaomi Router entry
+        - XiaoAi screen recognition
+        - Clipboard / Copy Direct
+        - Xiaomi Market
+        - Settings search
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: module_version
+    attributes:
+      label: Module version
+      placeholder: "For example: 1.2.9"
+    validations:
+      required: true
+  - type: input
+    id: device_os
+    attributes:
+      label: Device, Android, and HyperOS/MIUI version
+      placeholder: "For example: Xiaomi 17 / Android 16 / HyperOS 3.0.313.0"
+    validations:
+      required: true
+  - type: input
+    id: scoped_app
+    attributes:
+      label: Affected app and version
+      placeholder: "For example: Super XiaoAi 7.13.23.0020"
+    validations:
+      required: true
+  - type: input
+    id: lsp
+    attributes:
+      label: LSPosed version and selected scopes
+      placeholder: "For example: LSPosed 2.0.2; android, com.miui.voiceassist"
+    validations:
+      required: true
+  - type: input
+    id: default_browser
+    attributes:
+      label: Default browser
+      placeholder: "For example: Via 6.9.0"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant LSPosed or logcat logs
+      description: "Use a code block or attach a text file. Remove personal data first."
+      render: shell
