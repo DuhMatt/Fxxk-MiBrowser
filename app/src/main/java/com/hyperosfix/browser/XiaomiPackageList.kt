@@ -64,6 +64,19 @@ object XiaomiPackageList {
     )
 
     /**
+     * HyperOS 4 developer builds moved screen-recognition availability checks
+     * into this utility class. Keep it separate from the legacy candidates so
+     * HyperOS 3 devices retain the existing hook path.
+     */
+    const val CLASS_VOICE_ASSIST_S2 = "com.xiaomi.voiceassistant.utils.s2"
+
+    /** Super XiaoAi 8.0.30.4121, observed on HyperOS 4 / Android 17. */
+    const val VOICE_ASSIST_S2_MIN_VERSION_CODE = 508000030L
+
+    fun shouldHookVoiceAssistS2(versionCode: Long): Boolean =
+        versionCode >= VOICE_ASSIST_S2_MIN_VERSION_CODE
+
+    /**
      * XiaoAi / AI Engine classes that may receive recognized screen text or
      * URL strings before Xiaomi rewrites the launch into a browser/market
      * intent. These names are intentionally candidates: missing classes are

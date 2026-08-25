@@ -6,8 +6,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.util.Log
 import de.robv.android.xposed.XC_MethodHook
+import com.hyperosfix.browser.ModuleLog as Log
 import java.lang.reflect.Modifier
 import java.util.Collections
 import java.util.IdentityHashMap

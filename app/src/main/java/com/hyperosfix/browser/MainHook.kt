@@ -1,6 +1,7 @@
 package com.hyperosfix.browser
 
 import android.app.Activity
+import android.app.Application
 import android.app.Notification
 import android.app.PendingIntent
 import android.content.Context
@@ -12,9 +13,10 @@ import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Icon
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import com.hyperosfix.browser.BuildConfig
+import com.hyperosfix.browser.ModuleLog as Log
 import de.robv.android.xposed.IXposedHookLoadPackage
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedBridge
@@ -1327,6 +1329,153 @@ class MainHook : IXposedHookLoadPackage {
             Log.w(TAG, "[VoiceAssist] No target class found. Framework hooks will still catch startActivity calls.")
             XposedBridge.log("[$TAG] VoiceAssist: no target class found — relying on framework hooks")
         }
+
+        hookVoiceAssistVersionGate(lpparam)
+    }
+
+    private fun hookVoiceAssistVersionGate(lpparam: XC_LoadPackage.LoadPackageParam) {
+        try {
+            XposedHelpers.findAndHookMethod(
+                Application::class.java,
+                "attach",
+                Context::class.java,
+                object : XC_MethodHook() {
+                    override fun afterHookedMethod(param: MethodHookParam) {
+                        val context = param.args[0] as? Context ?: return
+                        if (context.packageName != XiaomiPackageList.VOICE_ASSIST) return
+
+                        val versionCode = readVoiceAssistVersionCode(context) ?: run {
+                            Log.w(TAG, "[VoiceAssist] Version unavailable; keeping legacy-only hooks")
+                            return
+                        }
+
+                        Log.i(TAG, "[VoiceAssist] Detected versionCode=$versionCode")
+                        if (XiaomiPackageList.shouldHookVoiceAssistS2(versionCode)) {
+                            hookHyperOs4VoiceAssistS2(lpparam.classLoader, versionCode)
+                        } else {
+                            Log.i(
+                                TAG,
+                                "[VoiceAssist] Keeping legacy-only hooks for versionCode=$versionCode " +
+                                    "(< ${XiaomiPackageList.VOICE_ASSIST_S2_MIN_VERSION_CODE})"
+                            )
+                        }
+                    }
+                }
+            )
+            Log.i(TAG, "[VoiceAssist] Installed version gate on Application.attach")
+        } catch (t: Throwable) {
+            Log.w(
+                TAG,
+                "[VoiceAssist] Failed to install version gate; keeping legacy-only hooks: " +
+                    "${t.javaClass.simpleName} — ${t.message}"
+            )
+        }
+    }
+
+    private fun readVoiceAssistVersionCode(context: Context): Long? {
+        return try {
+            val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.packageManager.getPackageInfo(
+                    XiaomiPackageList.VOICE_ASSIST,
+                    PackageManager.PackageInfoFlags.of(0L)
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                context.packageManager.getPackageInfo(XiaomiPackageList.VOICE_ASSIST, 0)
+            }
+            info.longVersionCode
+        } catch (t: Throwable) {
+            Log.w(
+                TAG,
+                "[VoiceAssist] Failed to read installed version: " +
+                    "${t.javaClass.simpleName} — ${t.message}"
+            )
+            null
+        }
+    }
+
+    /**
+     * Super XiaoAi 8.0.30.4121 on HyperOS 4 checks the parsed screen-recognition
+     * Intent through s2.isIntentAvailable() before startActivity. When Xiaomi
+     * Browser is hidden, that check returns false and VoiceAssist shows
+     * "未安装该应用，请先安装", so the framework startActivity hook never runs.
+     *
+     * This hook is deliberately installed only behind the VoiceAssist version
+     * gate. Older versions keep the existing b2/f2 behavior unchanged.
+     */
+    private fun hookHyperOs4VoiceAssistS2(classLoader: ClassLoader, versionCode: Long) {
+        val className = XiaomiPackageList.CLASS_VOICE_ASSIST_S2
+        try {
+            val clazz = XposedHelpers.findClass(className, classLoader)
+            XposedHelpers.findAndHookMethod(
+                clazz,
+                "isIntentAvailable",
+                Intent::class.java,
+                Context::class.java,
+                object : XC_MethodHook() {
+                    override fun beforeHookedMethod(param: MethodHookParam) {
+                        val intent = param.args[0] as? Intent ?: return
+                        val context = param.args[1] as? Context ?: return
+                        if (rewriteHyperOs4VoiceAssistBrowserIntent(intent, context)) {
+                            param.result = true
+                        }
+                    }
+                }
+            )
+            Log.i(TAG, "[VoiceAssist-HOS4] Hooked $className.isIntentAvailable for versionCode=$versionCode")
+            XposedBridge.log(
+                "[$TAG] VoiceAssist-HOS4: hooked $className.isIntentAvailable " +
+                    "for versionCode=$versionCode"
+            )
+        } catch (t: Throwable) {
+            Log.w(
+                TAG,
+                "[VoiceAssist-HOS4] Version gate matched ($versionCode), but $className " +
+                    "hook is unavailable: ${t.javaClass.simpleName} — ${t.message}"
+            )
+            XposedBridge.log(
+                "[$TAG] VoiceAssist-HOS4: $className unavailable for versionCode=$versionCode — " +
+                    "${t.javaClass.simpleName}"
+            )
+        }
+    }
+
+    private fun rewriteHyperOs4VoiceAssistBrowserIntent(intent: Intent, context: Context): Boolean {
+        val targetPackage = intent.`package`
+        val targetComponentPackage = intent.component?.packageName
+        if (!XiaomiPackageList.isXiaomiBrowser(targetPackage) &&
+            !XiaomiPackageList.isXiaomiBrowser(targetComponentPackage)
+        ) {
+            return false
+        }
+
+        val recovered = IntentInterceptor.recoverUrlForRedirect(intent)
+        if (recovered == null) {
+            Log.w(
+                TAG,
+                "[VoiceAssist-HOS4] Xiaomi Browser intent had no recoverable web URL: ${intent.data}"
+            )
+            return false
+        }
+
+        intent.action = Intent.ACTION_VIEW
+        intent.data = recovered
+        intent.component = null
+        intent.setPackage(null)
+        intent.addCategory(Intent.CATEGORY_BROWSABLE)
+        intent.addCategory(Intent.CATEGORY_DEFAULT)
+
+        val browser = DefaultBrowserResolver.resolveDefaultBrowser(context)
+        if (browser?.isDefault == true) {
+            intent.setPackage(browser.packageName)
+        }
+
+        Log.i(
+            TAG,
+            "[VoiceAssist-HOS4] Rewrote unavailable Xiaomi Browser intent to " +
+                "${intent.`package` ?: "system resolver"}: $recovered"
+        )
+        return true
     }
 
     /**
@@ -1441,11 +1590,13 @@ class MainHook : IXposedHookLoadPackage {
         if (scheme != "market" && !scheme.startsWith("mi")) return false
 
         val marketId = data.getQueryParameter("id")
-        if (!XiaomiPackageList.isXiaomiBrowser(marketId)) return false
+        val isBrowserDownload = XiaomiPackageList.isXiaomiBrowser(marketId)
+        val isVoiceAssistFallback = isVoiceAssistScreenRecognitionFallback(intent)
+        if (!isBrowserDownload && !isVoiceAssistFallback) return false
 
         val recovered = IntentInterceptor.recoverUrlForRedirect(intent)
         if (recovered == null) {
-            Log.w(TAG, "$source saw Xiaomi Browser download intent but no original URL was cached: $data")
+            Log.w(TAG, "$source saw Xiaomi browser/fallback download intent but no original URL was cached: $data")
             return false
         }
 
@@ -1461,7 +1612,20 @@ class MainHook : IXposedHookLoadPackage {
             intent.setPackage(browser.packageName)
         }
 
-        Log.i(TAG, "$source rewrote Xiaomi Browser download intent to: $recovered")
+        val reason = if (isBrowserDownload) "xiaomi-browser-download" else "voiceassist-screen-recognition-fallback"
+        Log.i(TAG, "$source rewrote $reason intent to: $recovered")
         return true
+    }
+
+    private fun isVoiceAssistScreenRecognitionFallback(intent: Intent): Boolean {
+        val data = intent.data ?: return false
+        val ref = data.getQueryParameter("ref")?.lowercase()
+        if (ref == "xiaoai_screenrecognition") return true
+
+        val pageRef = intent.getStringExtra("pageRef")?.lowercase()
+        if (pageRef == "xiaoai_screenrecognition") return true
+
+        val sourcePackage = intent.getStringExtra("sourcePackage")
+        return sourcePackage == XiaomiPackageList.VOICE_ASSIST
     }
 }

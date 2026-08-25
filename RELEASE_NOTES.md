@@ -1,5 +1,27 @@
 # Release Notes
 
+## v1.2.10-beta — HyperOS 4 only (Pre-release)
+
+> **警告：这是 Beta / Pre-release，不是正式稳定版本。仅推荐 HyperOS 4 / Android 17 开发版用户更新。该版本尚未在 HyperOS 3 真机回归，可能影响 HyperOS 3 上原本正常的功能；HyperOS 3 用户请继续使用 v1.2.9。如遇异常，请降级至 v1.2.9。**
+
+### 中文
+
+- 修复 HyperOS 4 / Android 17 开发版中，小爱识屏点击网页链接时提示“未安装该应用，请先安装”的问题。
+- 新版超级小爱会在调用 `startActivity` 前，通过 `com.xiaomi.voiceassistant.utils.s2.isIntentAvailable()` 检查指向小米浏览器的 Intent；模块现在会在该检查阶段恢复 HTTP(S) 链接并交给系统默认浏览器。
+- 模块读取 `com.miui.voiceassist` 的真实 `versionCode`，仅在 `versionCode >= 508000030` 时安装 HyperOS 4 专用 `s2` Hook；更低版本继续使用旧的 `b2/f2` 路径。
+- 已在 HyperOS `OS4.0.0.17.XPACNXM`、Android 17、超级小爱 `8.0.30.4121` 上实测通过。
+- 普通版与 Log 版使用和 v1.2.9 相同的包名及签名，可直接覆盖安装；Log 版提供本地日志开关、查看和分享面板。
+
+> **Warning: this is a Beta / Pre-release, not a stable release. It is recommended only for HyperOS 4 / Android 17 developer-build users. It has not been regression-tested on HyperOS 3 and may affect previously working behavior. HyperOS 3 users should remain on v1.2.9. Downgrade to v1.2.9 if problems occur.**
+
+### English
+
+- Fix the “app not installed” toast shown when opening a screen-recognition web link on HyperOS 4 / Android 17 developer builds.
+- New Super XiaoAi builds check Xiaomi Browser intents through `com.xiaomi.voiceassistant.utils.s2.isIntentAvailable()` before `startActivity`; the module now restores the HTTP(S) URL during that check and routes it to the system default browser.
+- The module reads the real `com.miui.voiceassist` `versionCode`. The HyperOS 4-specific `s2` hook is installed only for `versionCode >= 508000030`; lower versions retain the legacy `b2/f2` path.
+- Tested on HyperOS `OS4.0.0.17.XPACNXM`, Android 17, and Super XiaoAi `8.0.30.4121`.
+- Release and Log APKs use the same package name and signing certificate as v1.2.9 and can be installed over it directly. The Log build includes a local logging toggle, viewer, and share panel.
+
 ## v1.2.9
 
 ### 中文

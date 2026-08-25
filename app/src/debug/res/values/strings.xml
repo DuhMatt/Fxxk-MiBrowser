@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="debug_panel_title">Fxxk-MiBrowser Debug</string>
+    <string name="debug_panel_intro">Use this build only for issue reproduction. Enable logging first, reproduce the bad redirect, then share the generated log file.</string>
+    <string name="debug_logging_switch">Record module runtime log</string>
+    <string name="debug_share_button">Share log</string>
+    <string name="debug_share_subject">Fxxk-MiBrowser debug log</string>
+    <string name="debug_log_location_value">Log path: %1$s</string>
+    <string name="debug_log_unavailable">not ready yet</string>
+</resources>

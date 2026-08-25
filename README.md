@@ -33,7 +33,9 @@ Prevent HyperOS from forcing links into Xiaomi Browser; redirect to the system d
 
 ### 已知兼容性限制
 
-小爱识屏场景目前实测通过的超级小爱版本为 `7.13.23.0020`。已知部分旧版本超级小爱在“小爱识屏”识别 URL 的场景下，使用本模块时仍可能出现异常跳转；如果你遇到小爱识屏 URL 识别跳转 bug，请先将超级小爱更新到较新版本，重启后再复测。
+> **v1.2.10-beta 是面向 HyperOS 4 / Android 17 开发版的预发布测试版本，不是正式稳定版。仅推荐 HyperOS 4 用户更新。该版本尚未在 HyperOS 3 真机回归，HyperOS 3 用户请继续使用 v1.2.9；如测试 Beta 后遇到异常，请降级至 v1.2.9。**
+
+小爱识屏现在按超级小爱版本选择 Hook：低于 `versionCode 508000030` 时保留旧的 `b2/f2` 路径；从实测版本 `8.0.30.4121`（`versionCode 508000030`）开始，启用 HyperOS 4 的 `s2.isIntentAvailable()` 修复。这个版本门控用于降低对旧设备的影响，但不能替代 HyperOS 3 真机回归，因此当前不宣称 v1.2.10-beta 已兼容 HyperOS 3。
 
 同理，其他作用域 app 目前虽然还没有收到明确的“旧版本导致 bug”反馈，但如果遇到相关问题，也建议先去小米应用商店把各个作用域 app 更新到最新版本后再测试。提交反馈时请附上系统、应用和 LSPosed 版本，以及相关日志。
 
@@ -84,6 +86,8 @@ mimarket://details?id=com.android.browser
 | Dex 优化器包装 | 支持 |
 | 测试默认浏览器 | Via (`mark.via`) |
 
+上表是 v1.2.9 旧路径在 HyperOS 3 上的既有测试记录。v1.2.10-beta 的新路径另在同一设备的 Android `17`、SDK `37`、HyperOS `OS4.0.0.17.XPACNXM`、超级小爱 `8.0.30.4121`（`versionCode 508000030`）上完成实测：识屏网页链接正常交给 Via，且不再出现“未安装该应用，请先安装”Toast。
+
 小米互传场景，实测能从接收数据里恢复原始网页链接：
 
 ```text
@@ -116,7 +120,7 @@ mimarket://details?id=com.android.browser
 -> 用户设置的默认浏览器
 ```
 
-以上链路在超级小爱 `7.13.23.0020` 上已测试通过。若你的设备仍在使用旧版本超级小爱，并且只在“小爱识屏”场景下出现 URL 跳转异常，请优先尝试更新超级小爱后再反馈。
+原有链路曾在 HyperOS 3 的超级小爱 `7.13.23.0020` 上随 v1.2.9 测试通过；v1.2.10-beta 尚未在该环境重新测试。
 
 ### 使用要求
 
@@ -186,7 +190,7 @@ HyperOS / MIUI 的内部实现经常变。这个模块只保证在上面列出�
 
 ## English
 
-Current version: `1.2.9`
+Current pre-release version: `1.2.10-beta`
 
 This is an LSPosed module for HyperOS. It fixes one core problem: when Xiaomi system components receive a web link, they should not force it into Xiaomi Browser, and they should not open Xiaomi Market's browser download page when Xiaomi Browser is removed or disabled. The link should go to the browser the user selected as the Android default browser.
 
@@ -200,7 +204,9 @@ The module does not hard-code Chrome, Edge, Firefox, Via, or any other browser. 
 
 ### Known Compatibility Limitation
 
-The currently verified Super XiaoAi version for the screen-recognition scenario is `7.13.23.0020`. Some older Super XiaoAi builds are known to still mis-handle URL jumps in the XiaoAi screen-recognition flow even with this module enabled. If you hit a URL-recognition redirect bug only in XiaoAi screen recognition, update Super XiaoAi first, reboot, and then retest.
+> **v1.2.10-beta is a pre-release test build for HyperOS 4 / Android 17 developer builds, not a stable release. It is recommended only for HyperOS 4 users. This version has not been regression-tested on HyperOS 3; HyperOS 3 users should remain on v1.2.9. Downgrade to v1.2.9 if the Beta causes problems.**
+
+The screen-recognition hook is selected by the installed Super XiaoAi version. Builds below `versionCode 508000030` retain the legacy `b2/f2` path, while tested build `8.0.30.4121` (`versionCode 508000030`) and later enable the HyperOS 4 `s2.isIntentAvailable()` workaround. This gate reduces risk to older devices but does not replace real HyperOS 3 regression testing, so v1.2.10-beta is not claimed to be verified on HyperOS 3.
 
 The same advice applies to other scoped Xiaomi apps as well. There are no confirmed old-version bugs for those apps yet, but if you run into related problems, it is still worth updating the scoped apps from Xiaomi Market before reporting the issue. Please include the system, app, and LSPosed versions plus relevant logs in a report.
 
@@ -243,6 +249,8 @@ The values below were checked on a real device and in LSPosed Manager:
 | Xposed API call protection | Enabled |
 | Dex optimizer wrapper | Supported |
 | Tested default browser | Via (`mark.via`) |
+
+The table above records the existing v1.2.9 legacy-path test on HyperOS 3. The new v1.2.10-beta path was separately tested on Android `17`, SDK `37`, HyperOS `OS4.0.0.17.XPACNXM`, and Super XiaoAi `8.0.30.4121` (`versionCode 508000030`): screen-recognition web links opened in Via without the “app not installed” toast.
 
 Observed Mi Share recovery path:
 
