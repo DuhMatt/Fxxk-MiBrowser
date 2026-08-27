@@ -15,6 +15,10 @@ import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.view.View
+import android.view.ViewGroup
+import android.widget.ImageView
+import android.widget.TextView
 import com.hyperosfix.browser.BuildConfig
 import com.hyperosfix.browser.ModuleLog as Log
 import de.robv.android.xposed.IXposedHookLoadPackage
@@ -22,6 +26,10 @@ import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedBridge
 import de.robv.android.xposed.XposedHelpers
 import de.robv.android.xposed.callbacks.XC_LoadPackage
+import java.lang.reflect.Modifier
+import java.util.IdentityHashMap
+import org.json.JSONArray
+import org.json.JSONObject
 
 /**
  * LSPosed module entry point — diagnostic + interception version.
@@ -49,6 +57,12 @@ class MainHook : IXposedHookLoadPackage {
 
         if (pkg == XiaomiPackageList.AI_ENGINE) {
             hookXiaomiAiEngine(lpparam)
+            hookActionCoreProviderCall(lpparam.classLoader)
+            hookHyperAiCopyDirectCueDataPipeline(lpparam.classLoader)
+            hookHyperAiCopyDirectRenderedIcon()
+            if (BuildConfig.DEBUG) {
+                hookHyperAiActionProtocolDiagnostics(lpparam)
+            }
         }
 
         if (pkg == XiaomiPackageList.VOICE_ASSIST) {
@@ -79,6 +93,9 @@ class MainHook : IXposedHookLoadPackage {
         // to catch the original URL before it's lost.
         if (pkg == XiaomiPackageList.MI_SHARE || XiaomiPackageList.isXiaomiSystemApp(pkg)) {
             hookPendingIntentCreation()
+        }
+        if (BuildConfig.DEBUG) {
+            hookPendingIntentSendDiagnostics()
         }
 
         // ── Framework-level notification icon replacement ────────────────
@@ -449,6 +466,7 @@ class MainHook : IXposedHookLoadPackage {
                     override fun afterHookedMethod(param: MethodHookParam) {
                         val pkgName = param.args[0] as? String ?: return
                         if (XiaomiPackageList.isXiaomiBrowser(pkgName) && param.result == null) {
+                            logHyperAiDiagnosticStack("getLaunchIntentForPackage($pkgName)")
                             // Return a fake launch intent so the caller thinks the app is launchable
                             val intent = Intent(Intent.ACTION_MAIN).apply {
                                 addCategory(Intent.CATEGORY_LAUNCHER)
@@ -474,11 +492,11 @@ class MainHook : IXposedHookLoadPackage {
                 object : XC_MethodHook() {
                     override fun beforeHookedMethod(param: MethodHookParam) {
                         val pkgName = param.args[0] as? String ?: return
-                        if (!shouldSwapMiShareBrowserIcon(pkgName)) return
+                        if (!shouldSwapBrowserIcon(pkgName)) return
 
                         val context = android.app.AndroidAppHelper.currentApplication() ?: return
                         param.result = getDefaultBrowserDrawable(context)
-                        Log.d(TAG, "[PackageManager] Replaced MiShare popup browser icon for: $pkgName")
+                        Log.d(TAG, "[PackageManager] Replaced Xiaomi Browser icon for: $pkgName")
                     }
                 })
             Log.i(TAG, "[PackageManager] Hooked getApplicationIcon(String)")
@@ -494,23 +512,52 @@ class MainHook : IXposedHookLoadPackage {
                 object : XC_MethodHook() {
                     override fun beforeHookedMethod(param: MethodHookParam) {
                         val appInfo = param.args[0] as? android.content.pm.ApplicationInfo ?: return
-                        if (!shouldSwapMiShareBrowserIcon(appInfo.packageName)) return
+                        if (!shouldSwapBrowserIcon(appInfo.packageName)) return
 
                         val context = android.app.AndroidAppHelper.currentApplication() ?: return
                         param.result = getDefaultBrowserDrawable(context)
-                        Log.d(TAG, "[PackageManager] Replaced MiShare popup browser icon from ApplicationInfo")
+                        Log.d(TAG, "[PackageManager] Replaced Xiaomi Browser icon from ApplicationInfo")
                     }
                 })
             Log.i(TAG, "[PackageManager] Hooked getApplicationIcon(ApplicationInfo)")
         } catch (t: Throwable) {
             Log.w(TAG, "[PackageManager] getApplicationIcon(ApplicationInfo): ${t.javaClass.simpleName}")
         }
+
+        // 7. HyperAI renders the Copy Direct browser name from ApplicationInfo.
+        // Return the user's real default-browser label when it asks for Xiaomi Browser.
+        try {
+            XposedHelpers.findAndHookMethod(
+                pmClass, effectiveCl,
+                "getApplicationLabel",
+                android.content.pm.ApplicationInfo::class.java,
+                object : XC_MethodHook() {
+                    override fun beforeHookedMethod(param: MethodHookParam) {
+                        val appInfo = param.args[0] as? android.content.pm.ApplicationInfo ?: return
+                        if (!shouldSwapHyperAiBrowserMetadata(appInfo.packageName)) return
+
+                        val context = android.app.AndroidAppHelper.currentApplication() ?: return
+                        val label = getDefaultBrowserLabel(context) ?: return
+                        param.result = label
+                        Log.d(TAG, "[PackageManager] Replaced HyperAI Xiaomi Browser label with: $label")
+                    }
+                })
+            Log.i(TAG, "[PackageManager] Hooked getApplicationLabel(ApplicationInfo)")
+        } catch (t: Throwable) {
+            Log.w(TAG, "[PackageManager] getApplicationLabel(ApplicationInfo): ${t.javaClass.simpleName}")
+        }
     }
 
-    private fun shouldSwapMiShareBrowserIcon(pkgName: String?): Boolean {
+    private fun shouldSwapBrowserIcon(pkgName: String?): Boolean {
         val callerPackage = android.app.AndroidAppHelper.currentPackageName()
             ?: android.app.AndroidAppHelper.currentApplication()?.packageName
-        return callerPackage == XiaomiPackageList.MI_SHARE &&
+        return (callerPackage == XiaomiPackageList.MI_SHARE ||
+            callerPackage == XiaomiPackageList.AI_ENGINE) &&
+            XiaomiPackageList.isXiaomiBrowser(pkgName)
+    }
+
+    private fun shouldSwapHyperAiBrowserMetadata(pkgName: String?): Boolean {
+        return android.app.AndroidAppHelper.currentPackageName() == XiaomiPackageList.AI_ENGINE &&
             XiaomiPackageList.isXiaomiBrowser(pkgName)
     }
 
@@ -518,6 +565,23 @@ class MainHook : IXposedHookLoadPackage {
         DefaultBrowserResolver.resolveDefaultBrowser(context)?.let { browser ->
             runCatching { context.packageManager.getApplicationIcon(browser.packageName) }.getOrNull()
         }
+
+    private fun getDefaultBrowserLabel(context: Context): String? {
+        val browser = DefaultBrowserResolver.resolveDefaultBrowser(context) ?: return null
+        if (!browser.isDefault) return null
+        return runCatching {
+            val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.packageManager.getApplicationInfo(
+                    browser.packageName,
+                    PackageManager.ApplicationInfoFlags.of(0L)
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                context.packageManager.getApplicationInfo(browser.packageName, 0)
+            }
+            context.packageManager.getApplicationLabel(info).toString()
+        }.getOrNull()
+    }
 
     /**
      * Build a minimal [PackageInfo] that satisfies "is the package installed?" checks.
@@ -561,8 +625,42 @@ class MainHook : IXposedHookLoadPackage {
         // ponytail: don't fake when the package queries itself
         // (e.g. browser checks its own signatures on startup)
         if (android.app.AndroidAppHelper.currentPackageName() == pkgName) return
+        logHyperAiDiagnosticStack("${param.method.name}($pkgName)")
         param.result = builder(pkgName)
         Log.d(TAG, "[PackageManager] Faked ${param.method.name}: $pkgName")
+    }
+
+    private fun logHyperAiDiagnosticStack(event: String) {
+        if (!BuildConfig.DEBUG) return
+        if (android.app.AndroidAppHelper.currentPackageName() != XiaomiPackageList.AI_ENGINE) return
+
+        val frames = Throwable().stackTrace
+            .asSequence()
+            .filterNot { frame ->
+                frame.className.startsWith("com.hyperosfix.browser.") ||
+                    frame.className.startsWith("de.robv.android.xposed.") ||
+                    frame.className.startsWith("org.lsposed.") ||
+                    frame.className.startsWith("y.xAT.")
+            }
+            .take(18)
+            .joinToString("\n  ") { frame ->
+                "${frame.className}.${frame.methodName}:${frame.lineNumber}"
+            }
+
+        Log.w(TAG, "[AI-Engine-DIAG-STACK] $event\n  $frames")
+    }
+
+    private fun describeDiagnosticIntent(intent: Intent?): String {
+        if (intent == null) return "intent=null"
+        val data = intent.data?.toString()?.let { value ->
+            if (value.length <= 240) value else value.take(240) + "..."
+        }
+        val extraKeys = runCatching {
+            intent.extras?.keySet()?.sorted()?.take(16)?.joinToString(",")
+        }.getOrNull()
+        return "action=${intent.action}, data=$data, pkg=${intent.`package`}, " +
+            "comp=${intent.component?.flattenToShortString()}, flags=0x${Integer.toHexString(intent.flags)}, " +
+            "extraKeys=${extraKeys ?: ""}"
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -591,6 +689,16 @@ class MainHook : IXposedHookLoadPackage {
                 object : XC_MethodHook() {
                     override fun beforeHookedMethod(param: MethodHookParam) {
                         val intent = param.args[2] as? Intent ?: return
+                        val context = param.args[0] as? Context
+                        if (BuildConfig.DEBUG && context?.packageName == XiaomiPackageList.AI_ENGINE) {
+                            Log.i(
+                                TAG,
+                                "[AI-Engine-DIAG] PendingIntent.getActivity requestCode=${param.args[1]}, " +
+                                    "pendingFlags=0x${Integer.toHexString(param.args[3] as Int)} | " +
+                                    describeDiagnosticIntent(intent)
+                            )
+                            logHyperAiDiagnosticStack("PendingIntent.getActivity")
+                        }
                         val data = intent.data ?: return
                         val scheme = data.scheme
 
@@ -631,6 +739,907 @@ class MainHook : IXposedHookLoadPackage {
         } catch (t: Throwable) {
             Log.w(TAG, "[PendingIntent] Failed to hook PendingIntent.getActivity: ${t.javaClass.simpleName}")
         }
+    }
+
+    /**
+     * HyperAI Copy Direct may hand a PendingIntent to Content Catcher and never
+     * call startActivity in its own process. Log every send whose creator or
+     * current package is HyperAI so the click path remains visible.
+     */
+    private fun hookPendingIntentSendDiagnostics() {
+        try {
+            var hooked = 0
+            for (method in PendingIntent::class.java.declaredMethods) {
+                if (method.name != "send") continue
+                XposedBridge.hookMethod(method, object : XC_MethodHook() {
+                    override fun beforeHookedMethod(param: MethodHookParam) {
+                        val pendingIntent = param.thisObject as? PendingIntent ?: return
+                        val creatorPackage = runCatching { pendingIntent.creatorPackage }.getOrNull()
+                        val currentPackage = android.app.AndroidAppHelper.currentPackageName()
+                        if (creatorPackage != XiaomiPackageList.AI_ENGINE &&
+                            currentPackage != XiaomiPackageList.AI_ENGINE
+                        ) {
+                            return
+                        }
+
+                        val fillInIntent = param.args.firstOrNull { it is Intent } as? Intent
+                        Log.i(
+                            TAG,
+                            "[AI-Engine-DIAG] PendingIntent.send overload=${method.parameterTypes.size}, " +
+                                "creator=$creatorPackage, current=$currentPackage | " +
+                                describeDiagnosticIntent(fillInIntent)
+                        )
+                        logHyperAiDiagnosticStack("PendingIntent.send/${method.parameterTypes.size}")
+                    }
+                })
+                hooked++
+            }
+            Log.i(TAG, "[AI-Engine-DIAG] Hooked $hooked PendingIntent.send overloads")
+        } catch (t: Throwable) {
+            Log.w(
+                TAG,
+                "[AI-Engine-DIAG] PendingIntent.send hook unavailable: " +
+                    "${t.javaClass.simpleName} — ${t.message}"
+            )
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // Debug-only HyperAI custom action protocol diagnostics
+    // ══════════════════════════════════════════════════════════════════════
+
+    private fun hookHyperAiActionProtocolDiagnostics(
+        lpparam: XC_LoadPackage.LoadPackageParam
+    ) {
+        hookObservedHyperAiMethods(lpparam.classLoader)
+    }
+
+    private fun hookActionCoreProviderCall(classLoader: ClassLoader) {
+        val className =
+            "com.xiaomi.aicr.hce_framework.protocol.action.com.xiaomi.aicr.actionprovider.ActionCoreProvider"
+        try {
+            XposedHelpers.findAndHookMethod(
+                className,
+                classLoader,
+                "call",
+                String::class.java,
+                String::class.java,
+                Bundle::class.java,
+                object : XC_MethodHook() {
+                    override fun beforeHookedMethod(param: MethodHookParam) {
+                        if (!BuildConfig.DEBUG) return
+                        val method = param.args[0] as? String
+                        val arg = param.args[1] as? String
+                        val extras = param.args[2] as? Bundle
+                        Log.i(
+                            TAG,
+                            "[AI-Action-DIAG] ActionCoreProvider.call BEFORE " +
+                                "method=${truncateDiagnosticText(method)}, " +
+                                "arg=${truncateDiagnosticText(arg)}, " +
+                                "extras=${describeDiagnosticValue(extras)}"
+                        )
+                    }
+
+                    override fun afterHookedMethod(param: MethodHookParam) {
+                        rewriteHyperAiCopyDirectResponse(
+                            request = param.args[2] as? Bundle,
+                            response = param.result as? Bundle
+                        )
+                        if (!BuildConfig.DEBUG) return
+                        Log.i(
+                            TAG,
+                            "[AI-Action-DIAG] ActionCoreProvider.call AFTER " +
+                                "result=${describeDiagnosticValue(param.result)}"
+                        )
+                    }
+                }
+            )
+            Log.i(TAG, "[AI-Action-DIAG] Hooked $className.call(String,String,Bundle)")
+        } catch (t: Throwable) {
+            Log.w(
+                TAG,
+                "[AI-Action-DIAG] ActionCoreProvider.call hook unavailable: " +
+                    "${t.javaClass.simpleName} — ${t.message}"
+            )
+        }
+    }
+
+    /** Install only the two observed CueData queue entry hooks needed by the
+     * production fix. Verbose method/result logging remains debug-only. */
+    private fun hookHyperAiCopyDirectCueDataPipeline(classLoader: ClassLoader) {
+        val clazz = try {
+            XposedHelpers.findClass("wj0", classLoader)
+        } catch (t: Throwable) {
+            Log.w(
+                TAG,
+                "[AI-CopyDirect-UI-FIX] CueData pipeline unavailable: " +
+                    "${t.javaClass.simpleName} — ${t.message}"
+            )
+            return
+        }
+
+        var hooked = 0
+        for (method in clazz.declaredMethods.filter { method ->
+            method.name in setOf("j", "o") && method.parameterTypes.size == 1
+        }) {
+            try {
+                XposedBridge.hookMethod(method, object : XC_MethodHook() {
+                    override fun beforeHookedMethod(param: MethodHookParam) {
+                        rewriteHyperAiCopyDirectCueData(param.args)
+                    }
+                })
+                hooked++
+            } catch (t: Throwable) {
+                Log.w(
+                    TAG,
+                    "[AI-CopyDirect-UI-FIX] Failed to hook wj0.${method.name}: " +
+                        "${t.javaClass.simpleName} — ${t.message}"
+                )
+            }
+        }
+        Log.i(TAG, "[AI-CopyDirect-UI-FIX] Hooked $hooked CueData pipeline methods")
+    }
+
+    /**
+     * HyperOS 4 builds Copy Direct's card target, app metadata, and click-time
+     * resolve_intent command from the same nested intentUri. Rewriting that one
+     * protocol field keeps the visible browser and the executed browser aligned.
+     */
+    private fun rewriteHyperAiCopyDirectResponse(
+        request: Bundle?,
+        response: Bundle?
+    ) {
+        val actionType = request?.getString("type") ?: return
+        if (!actionType.contains("[com.xiaomi.aicr/context/get_copy_direct_data]")) return
+        if (response == null || response.getInt("target_code", -1) != 0) {
+            Log.w(TAG, "[AI-CopyDirect-FIX] Copy Direct response was not successful; preserving it")
+            return
+        }
+
+        try {
+            val targetOutText = response.getString("target_out") ?: run {
+                Log.w(TAG, "[AI-CopyDirect-FIX] Missing target_out; preserving response")
+                return
+            }
+            val targetOut = JSONObject(targetOutText)
+            if (targetOut.optInt("status", -1) != 0) {
+                Log.w(TAG, "[AI-CopyDirect-FIX] target_out status was not successful; preserving response")
+                return
+            }
+
+            val copyDirectValue = targetOut.opt("copyDirectData")
+            val copyDirect = when (copyDirectValue) {
+                is String -> JSONObject(copyDirectValue)
+                is JSONObject -> copyDirectValue
+                else -> {
+                    Log.w(TAG, "[AI-CopyDirect-FIX] Missing copyDirectData JSON; preserving response")
+                    return
+                }
+            }
+
+            val intentUri = copyDirect.optString("intentUri", "")
+            if (intentUri.isBlank()) {
+                Log.w(TAG, "[AI-CopyDirect-FIX] Missing intentUri; preserving response")
+                return
+            }
+
+            val intent = Intent.parseUri(intentUri, Intent.URI_INTENT_SCHEME)
+            val targetPackage = intent.`package`
+            val targetComponentPackage = intent.component?.packageName
+            if (!XiaomiPackageList.isXiaomiBrowser(targetPackage) &&
+                !XiaomiPackageList.isXiaomiBrowser(targetComponentPackage)
+            ) {
+                Log.d(TAG, "[AI-CopyDirect-FIX] Intent does not target Xiaomi Browser; preserving it")
+                return
+            }
+
+            val data = intent.data
+            val scheme = data?.scheme?.lowercase()
+            if (data == null || (scheme != "http" && scheme != "https")) {
+                Log.w(TAG, "[AI-CopyDirect-FIX] Intent is not HTTP(S); preserving it")
+                return
+            }
+
+            val context = android.app.AndroidAppHelper.currentApplication() ?: run {
+                Log.w(TAG, "[AI-CopyDirect-FIX] Application context unavailable; preserving response")
+                return
+            }
+            val browser = DefaultBrowserResolver.resolveDefaultBrowser(context)
+            if (browser == null || !browser.isDefault) {
+                Log.w(TAG, "[AI-CopyDirect-FIX] Explicit default browser unavailable; preserving response")
+                return
+            }
+            if (XiaomiPackageList.isXiaomiBrowser(browser.packageName)) {
+                Log.d(TAG, "[AI-CopyDirect-FIX] Xiaomi Browser is already the default; preserving response")
+                return
+            }
+
+            intent.component = null
+            intent.setPackage(browser.packageName)
+            val rewrittenIntentUri = intent.toUri(Intent.URI_INTENT_SCHEME)
+            copyDirect.put("intentUri", rewrittenIntentUri)
+
+            val browserLabel = getDefaultBrowserLabel(context) ?: browser.packageName
+            val metadataReplacements = rewriteCopyDirectMetadata(
+                copyDirect,
+                browser.packageName,
+                browserLabel
+            )
+            if (copyDirectValue is String) {
+                targetOut.put("copyDirectData", copyDirect.toString())
+            } else {
+                targetOut.put("copyDirectData", copyDirect)
+            }
+            response.putString("target_out", targetOut.toString())
+
+            Log.i(
+                TAG,
+                "[AI-CopyDirect-FIX] Rewrote Copy Direct from " +
+                    "${targetPackage ?: targetComponentPackage} to ${browser.packageName}: $data; " +
+                    "uiMetadataReplacements=$metadataReplacements, label=$browserLabel"
+            )
+        } catch (t: Throwable) {
+            Log.w(
+                TAG,
+                "[AI-CopyDirect-FIX] Failed to rewrite response; preserving original: " +
+                    "${t.javaClass.simpleName} — ${t.message}"
+            )
+        }
+    }
+
+    private fun rewriteCopyDirectMetadata(
+        value: Any?,
+        browserPackage: String,
+        browserLabel: String
+    ): Int {
+        return when (value) {
+            is JSONObject -> {
+                var changes = 0
+                val keys = value.keys().asSequence().toList()
+                for (key in keys) {
+                    val child = value.opt(key)
+                    if (child is String) {
+                        val (rewritten, count) = rewriteCopyDirectMetadataString(
+                            key,
+                            child,
+                            browserPackage,
+                            browserLabel
+                        )
+                        if (count > 0) value.put(key, rewritten)
+                        changes += count
+                    } else {
+                        changes += rewriteCopyDirectMetadata(child, browserPackage, browserLabel)
+                    }
+                }
+                changes
+            }
+            is JSONArray -> {
+                var changes = 0
+                for (index in 0 until value.length()) {
+                    val child = value.opt(index)
+                    if (child is String) {
+                        val (rewritten, count) = rewriteCopyDirectMetadataString(
+                            index.toString(),
+                            child,
+                            browserPackage,
+                            browserLabel
+                        )
+                        if (count > 0) value.put(index, rewritten)
+                        changes += count
+                    } else {
+                        changes += rewriteCopyDirectMetadata(child, browserPackage, browserLabel)
+                    }
+                }
+                changes
+            }
+            else -> 0
+        }
+    }
+
+    private fun rewriteCopyDirectMetadataString(
+        key: String,
+        original: String,
+        browserPackage: String,
+        browserLabel: String
+    ): Pair<String, Int> {
+        val trimmed = original.trim()
+        if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+            runCatching {
+                val nested = JSONObject(original)
+                val changes = rewriteCopyDirectMetadata(nested, browserPackage, browserLabel)
+                if (changes > 0) return nested.toString() to changes
+            }
+        } else if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+            runCatching {
+                val nested = JSONArray(original)
+                val changes = rewriteCopyDirectMetadata(nested, browserPackage, browserLabel)
+                if (changes > 0) return nested.toString() to changes
+            }
+        }
+
+        var rewritten = original
+        var changes = 0
+        val metadataKey = key.lowercase().let { normalized ->
+            normalized.contains("package") ||
+                normalized.contains("target") ||
+                normalized.contains("apk") ||
+                normalized.contains("icon") ||
+                normalized.contains("resource") ||
+                normalized.contains("intent") ||
+                normalized.contains("app")
+        }
+        for (xiaomiPackage in XiaomiPackageList.ALL_BROWSER_PACKAGES) {
+            val updated = when {
+                rewritten == xiaomiPackage -> browserPackage
+                metadataKey -> rewritten.replace(xiaomiPackage, browserPackage)
+                else -> rewritten
+                    .replace(";package=$xiaomiPackage;", ";package=$browserPackage;")
+                    .replace("android.resource://$xiaomiPackage/", "android.resource://$browserPackage/")
+            }
+            if (updated != rewritten) {
+                changes++
+                rewritten = updated
+            }
+        }
+
+        val textKey = key.lowercase().let { normalized ->
+            normalized.contains("title") ||
+                normalized.contains("text") ||
+                normalized.contains("description") ||
+                normalized.contains("label") ||
+                normalized.contains("name") ||
+                normalized.contains("browser") ||
+                normalized.contains("app")
+        }
+        if (textKey) {
+            for (xiaomiLabel in listOf("小米浏览器", "Mi Browser", "Xiaomi Browser")) {
+                val updated = rewritten.replace(xiaomiLabel, browserLabel)
+                if (updated != rewritten) {
+                    changes++
+                    rewritten = updated
+                }
+            }
+        }
+        return rewritten to changes
+    }
+
+    private fun hookObservedHyperAiMethods(classLoader: ClassLoader) {
+        val targets = linkedMapOf(
+            "pw8" to setOf("k", "l"),
+            "jo3" to setOf("b"),
+            "ho2" to setOf("a"),
+            "ok0" to setOf("a", "e"),
+            "al0" to setOf("l"),
+            "wj0" to setOf("j", "k", "o", "p"),
+            "el" to setOf("onClick"),
+        )
+
+        for ((className, methodNames) in targets) {
+            val clazz = try {
+                XposedHelpers.findClass(className, classLoader)
+            } catch (_: Throwable) {
+                Log.d(TAG, "[AI-Action-DIAG] Class unavailable in this process: $className")
+                continue
+            }
+
+            for (method in clazz.declaredMethods.filter { it.name in methodNames }) {
+                val signature = buildString {
+                    append(clazz.name)
+                    append('.')
+                    append(method.name)
+                    append('(')
+                    append(method.parameterTypes.joinToString(",") { it.name })
+                    append("): ")
+                    append(method.returnType.name)
+                }
+                try {
+                    XposedBridge.hookMethod(method, object : XC_MethodHook() {
+                        override fun beforeHookedMethod(param: MethodHookParam) {
+                            val args = param.args.mapIndexed { index, value ->
+                                "#$index=${describeDiagnosticValue(value)}"
+                            }.joinToString(" | ")
+                            Log.i(TAG, "[AI-Action-DIAG] $signature BEFORE $args")
+                        }
+
+                        override fun afterHookedMethod(param: MethodHookParam) {
+                            val outcome = param.throwable?.let {
+                                "throwable=${it.javaClass.name}:${truncateDiagnosticText(it.message)}"
+                            } ?: "result=${describeDiagnosticValue(param.result)}"
+                            Log.i(TAG, "[AI-Action-DIAG] $signature AFTER $outcome")
+                        }
+                    })
+                    Log.i(TAG, "[AI-Action-DIAG] Hooked $signature")
+                } catch (t: Throwable) {
+                    Log.w(
+                        TAG,
+                        "[AI-Action-DIAG] Failed to hook $signature: " +
+                            "${t.javaClass.simpleName} — ${t.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Rewrites the already-materialized Copy Direct CueData used by HyperAI's
+     * bubble renderer.  HyperOS 4 does not derive this object's visual metadata
+     * from the actionprovider response, so changing only intentUri cannot alter
+     * the label/icon shown on screen.
+     */
+    private fun rewriteHyperAiCopyDirectCueData(arguments: Array<Any?>) {
+        val context = android.app.AndroidAppHelper.currentApplication() ?: return
+        val browser = DefaultBrowserResolver.resolveDefaultBrowser(context) ?: return
+        if (!browser.isDefault || XiaomiPackageList.isXiaomiBrowser(browser.packageName)) return
+        val browserLabel = getDefaultBrowserLabel(context) ?: browser.packageName
+        val browserIcon = getAppIcon(context, browser.packageName)
+        val visited = IdentityHashMap<Any, Boolean>()
+
+        for (argument in arguments) {
+            visitForCopyDirectCueData(
+                value = argument,
+                context = context,
+                browserPackage = browser.packageName,
+                browserLabel = browserLabel,
+                browserIcon = browserIcon,
+                visited = visited,
+                depth = 0
+            )
+        }
+    }
+
+    private fun visitForCopyDirectCueData(
+        value: Any?,
+        context: Context,
+        browserPackage: String,
+        browserLabel: String,
+        browserIcon: Icon?,
+        visited: IdentityHashMap<Any, Boolean>,
+        depth: Int
+    ) {
+        if (value == null || depth > 5) return
+        if (value is String || value is Number || value is Boolean || value is Char) return
+        if (visited.put(value, true) != null) return
+
+        try {
+            when (value) {
+                is Collection<*> -> value.forEach {
+                    visitForCopyDirectCueData(
+                        it, context, browserPackage, browserLabel, browserIcon, visited, depth + 1
+                    )
+                }
+                is Map<*, *> -> value.values.forEach {
+                    visitForCopyDirectCueData(
+                        it, context, browserPackage, browserLabel, browserIcon, visited, depth + 1
+                    )
+                }
+                is Array<*> -> value.forEach {
+                    visitForCopyDirectCueData(
+                        it, context, browserPackage, browserLabel, browserIcon, visited, depth + 1
+                    )
+                }
+                else -> {
+                    if (value.javaClass.name == "com.xiaomi.ai.bubble.core.model.CueData" &&
+                        isCopyDirectCueData(value)
+                    ) {
+                        rewriteCopyDirectCueDataObject(
+                            value, context, browserPackage, browserLabel, browserIcon
+                        )
+                        return
+                    }
+
+                    // vj0 is the observed wrapper around the CueData list. Avoid
+                    // reflecting through arbitrary Android/framework objects.
+                    if (value.javaClass.name == "vj0") {
+                        instanceFields(value.javaClass).forEach { field ->
+                            val child = runCatching {
+                                field.isAccessible = true
+                                field.get(value)
+                            }.getOrNull()
+                            visitForCopyDirectCueData(
+                                child,
+                                context,
+                                browserPackage,
+                                browserLabel,
+                                browserIcon,
+                                visited,
+                                depth + 1
+                            )
+                        }
+                    }
+                }
+            }
+        } finally {
+            visited.remove(value)
+        }
+    }
+
+    private fun isCopyDirectCueData(cueData: Any): Boolean {
+        val stringFields = instanceFields(cueData.javaClass).mapNotNull { field ->
+            runCatching {
+                field.isAccessible = true
+                field.get(cueData) as? String
+            }.getOrNull()
+        }
+        return stringFields.any { it == "copy_jump" } ||
+            stringFields.any { it.contains("copy_text_jump_app") }
+    }
+
+    private fun rewriteCopyDirectCueDataObject(
+        cueData: Any,
+        context: Context,
+        browserPackage: String,
+        browserLabel: String,
+        browserIcon: Icon?
+    ) {
+        val before = describeCueDataVisualFields(cueData)
+        val changes = rewriteCueDataModelFields(
+            value = cueData,
+            browserPackage = browserPackage,
+            browserLabel = browserLabel,
+            browserIcon = browserIcon,
+            visited = IdentityHashMap(),
+            depth = 0,
+            path = "CueData"
+        )
+        val after = describeCueDataVisualFields(cueData)
+        Log.i(
+            TAG,
+            "[AI-CopyDirect-UI-FIX] Rewrote rendered CueData for $browserPackage/$browserLabel; " +
+                "changes=$changes; before=$before; after=$after"
+        )
+
+        // Force the real package's icon/label into PackageManager caches used
+        // after CueData.targetPackage has been changed.
+        runCatching { context.packageManager.getApplicationInfo(browserPackage, 0) }
+    }
+
+    private fun rewriteCueDataModelFields(
+        value: Any?,
+        browserPackage: String,
+        browserLabel: String,
+        browserIcon: Icon?,
+        visited: IdentityHashMap<Any, Boolean>,
+        depth: Int,
+        path: String
+    ): Int {
+        if (value == null || depth > 7) return 0
+        if (value is String || value is Number || value is Boolean || value is Char) return 0
+        if (visited.put(value, true) != null) return 0
+
+        var changes = 0
+        try {
+            when (value) {
+                is Collection<*> -> value.forEachIndexed { index, child ->
+                    changes += rewriteCueDataModelFields(
+                        child, browserPackage, browserLabel, browserIcon,
+                        visited, depth + 1, "$path[$index]"
+                    )
+                }
+                is Map<*, *> -> value.values.forEach { child ->
+                    changes += rewriteCueDataModelFields(
+                        child, browserPackage, browserLabel, browserIcon,
+                        visited, depth + 1, "$path{value}"
+                    )
+                }
+                else -> {
+                    val className = value.javaClass.name
+                    if (!className.startsWith("com.xiaomi.ai.bubble.core.model.CueData")) return 0
+
+                    for (field in instanceFields(value.javaClass)) {
+                        val child = runCatching {
+                            field.isAccessible = true
+                            field.get(value)
+                        }.getOrNull()
+                        val fieldPath = "$path.${field.name}"
+
+                        when (child) {
+                            is String -> {
+                                val rewritten = rewriteCueDataString(child, browserPackage, browserLabel)
+                                if (rewritten != child && runCatching {
+                                        field.set(value, rewritten)
+                                    }.isSuccess
+                                ) {
+                                    changes++
+                                    Log.d(TAG, "[AI-CopyDirect-UI-FIX] $fieldPath: $child -> $rewritten")
+                                }
+                            }
+                            is Icon -> {
+                                if (browserIcon != null && field.name.contains("icon", true) &&
+                                    runCatching { field.set(value, browserIcon) }.isSuccess
+                                ) {
+                                    changes++
+                                    Log.d(TAG, "[AI-CopyDirect-UI-FIX] Replaced $fieldPath Android Icon")
+                                }
+                            }
+                            else -> changes += rewriteCueDataModelFields(
+                                child,
+                                browserPackage,
+                                browserLabel,
+                                browserIcon,
+                                visited,
+                                depth + 1,
+                                fieldPath
+                            )
+                        }
+                    }
+                }
+            }
+        } finally {
+            visited.remove(value)
+        }
+        return changes
+    }
+
+    private fun rewriteCueDataString(
+        original: String,
+        browserPackage: String,
+        browserLabel: String
+    ): String {
+        var rewritten = original
+        for (xiaomiPackage in XiaomiPackageList.ALL_BROWSER_PACKAGES) {
+            rewritten = rewritten.replace(xiaomiPackage, browserPackage)
+        }
+        for (xiaomiLabel in listOf("小米浏览器", "Mi Browser", "Xiaomi Browser")) {
+            rewritten = rewritten.replace(xiaomiLabel, browserLabel)
+        }
+        return rewritten
+    }
+
+    /**
+     * HyperAI only recognizes a closed set of `builtin` icon tokens. A token
+     * synthesized from a third-party package (for example app_icon_mark_via)
+     * resolves to nothing. Keep the valid Xiaomi placeholder token in CueData,
+     * then replace the rendered ImageView with the real default-browser
+     * Drawable. This deliberately mirrors the working MiShare notification
+     * approach, whose icon also comes directly from PackageManager.
+     */
+    private fun hookHyperAiCopyDirectRenderedIcon() {
+        try {
+            var textHooks = 0
+            for (method in TextView::class.java.declaredMethods) {
+                if (method.name != "setText") continue
+                if (method.parameterTypes.none {
+                        CharSequence::class.java.isAssignableFrom(it)
+                    }
+                ) continue
+
+                XposedBridge.hookMethod(method, object : XC_MethodHook() {
+                    override fun afterHookedMethod(param: MethodHookParam) {
+                        val textView = param.thisObject as? TextView ?: return
+                        val text = param.args.firstOrNull { it is CharSequence }
+                            ?.toString()
+                            ?: textView.text?.toString()
+                            ?: return
+                        replaceCopyDirectBubbleIconIfMatched(textView, text)
+                    }
+                })
+                textHooks++
+            }
+            Log.i(TAG, "[AI-CopyDirect-UI-ICON] Hooked $textHooks TextView.setText overloads")
+        } catch (t: Throwable) {
+            Log.w(
+                TAG,
+                "[AI-CopyDirect-UI-ICON] TextView hook unavailable: " +
+                    "${t.javaClass.simpleName} — ${t.message}"
+            )
+        }
+    }
+
+    private fun replaceCopyDirectBubbleIconIfMatched(textView: TextView, text: String) {
+        if (!text.contains("打开")) return
+        val context = textView.context ?: return
+        val browser = DefaultBrowserResolver.resolveDefaultBrowser(context) ?: return
+        if (!browser.isDefault || XiaomiPackageList.isXiaomiBrowser(browser.packageName)) return
+        val label = getDefaultBrowserLabel(context) ?: browser.packageName
+        if (!text.contains(label, ignoreCase = true)) return
+
+        // Run once after the current bind and once after the next layout pass;
+        // some HyperAI builds bind the builtin icon after the title text.
+        val replacement = Runnable {
+            replaceNearestBubbleImageView(textView, browser.packageName, label)
+        }
+        textView.post(replacement)
+        textView.postDelayed(replacement, 120L)
+    }
+
+    private fun replaceNearestBubbleImageView(
+        textView: TextView,
+        browserPackage: String,
+        browserLabel: String
+    ) {
+        if (!textView.isAttachedToWindow) return
+        val drawable = getDefaultBrowserDrawable(textView.context) ?: return
+        var ancestor = textView.parent as? ViewGroup
+        var levels = 0
+
+        while (ancestor != null && levels < 6) {
+            val candidates = ArrayList<ImageView>()
+            collectImageViews(ancestor, candidates)
+            val target = candidates
+                .filter { it.visibility == View.VISIBLE }
+                .minByOrNull { imageViewDistance(textView, it) }
+            if (target != null) {
+                target.setImageDrawable(drawable.constantState?.newDrawable()?.mutate() ?: drawable)
+                val idName = runCatching {
+                    target.resources.getResourceEntryName(target.id)
+                }.getOrNull() ?: "no-id"
+                Log.i(
+                    TAG,
+                    "[AI-CopyDirect-UI-ICON] Injected real icon for " +
+                        "$browserPackage/$browserLabel into ImageView($idName)"
+                )
+                return
+            }
+            ancestor = ancestor.parent as? ViewGroup
+            levels++
+        }
+        Log.w(
+            TAG,
+            "[AI-CopyDirect-UI-ICON] Matched title for $browserPackage/$browserLabel " +
+                "but found no sibling ImageView"
+        )
+    }
+
+    private fun collectImageViews(root: View, output: MutableList<ImageView>) {
+        if (root is ImageView) {
+            output += root
+            return
+        }
+        if (root !is ViewGroup) return
+        for (index in 0 until root.childCount) {
+            collectImageViews(root.getChildAt(index), output)
+        }
+    }
+
+    private fun imageViewDistance(textView: TextView, imageView: ImageView): Int {
+        val textPosition = IntArray(2)
+        val imagePosition = IntArray(2)
+        runCatching { textView.getLocationOnScreen(textPosition) }
+        runCatching { imageView.getLocationOnScreen(imagePosition) }
+        return kotlin.math.abs(textPosition[0] - imagePosition[0]) +
+            kotlin.math.abs(textPosition[1] - imagePosition[1])
+    }
+
+    private fun describeCueDataVisualFields(cueData: Any): String {
+        val leaves = ArrayList<String>()
+        collectCueDataVisualLeaves(
+            cueData, IdentityHashMap(), 0, "CueData", leaves
+        )
+        return truncateDiagnosticText(leaves.take(40).joinToString(" | "))
+    }
+
+    private fun collectCueDataVisualLeaves(
+        value: Any?,
+        visited: IdentityHashMap<Any, Boolean>,
+        depth: Int,
+        path: String,
+        output: MutableList<String>
+    ) {
+        if (value == null || depth > 7 || output.size >= 40) return
+        if (visited.put(value, true) != null) return
+        try {
+            val className = value.javaClass.name
+            if (!className.startsWith("com.xiaomi.ai.bubble.core.model.CueData")) return
+            for (field in instanceFields(value.javaClass)) {
+                val child = runCatching {
+                    field.isAccessible = true
+                    field.get(value)
+                }.getOrNull()
+                val fieldPath = "$path.${field.name}"
+                when (child) {
+                    is String -> {
+                        if (fieldPath.contains("display", true) ||
+                            fieldPath.contains("icon", true) ||
+                            child.contains("browser", true) ||
+                            child.contains("浏览器")
+                        ) output += "$fieldPath=$child"
+                    }
+                    else -> collectCueDataVisualLeaves(
+                        child, visited, depth + 1, fieldPath, output
+                    )
+                }
+            }
+        } finally {
+            visited.remove(value)
+        }
+    }
+
+    private fun instanceFields(clazz: Class<*>): List<java.lang.reflect.Field> {
+        val fields = ArrayList<java.lang.reflect.Field>()
+        var current: Class<*>? = clazz
+        while (current != null && current != Any::class.java) {
+            fields += current.declaredFields.filterNot {
+                it.isSynthetic || Modifier.isStatic(it.modifiers)
+            }
+            current = current.superclass
+        }
+        return fields
+    }
+
+    private fun describeDiagnosticValue(value: Any?): String {
+        return describeDiagnosticValue(value, 0, IdentityHashMap())
+    }
+
+    private fun describeDiagnosticValue(
+        value: Any?,
+        depth: Int,
+        visited: IdentityHashMap<Any, Boolean>
+    ): String {
+        if (value == null) return "null"
+        if (depth > 2) return value.javaClass.name
+        if (visited.put(value, true) != null) return "<cycle:${value.javaClass.name}>"
+
+        return try {
+            when (value) {
+                is String -> "String{${truncateDiagnosticText(value)}}"
+                is CharSequence -> "${value.javaClass.simpleName}{${truncateDiagnosticText(value.toString())}}"
+                is Number, is Boolean, is Char -> value.toString()
+                is Uri -> "Uri{${truncateDiagnosticText(value.toString())}}"
+                is Intent -> "Intent{${describeDiagnosticIntent(value)}}"
+                is Bundle -> {
+                    val entries = runCatching {
+                        value.keySet().sorted().take(24).joinToString(", ") { key ->
+                            "$key=${describeDiagnosticValue(value.get(key), depth + 1, visited)}"
+                        }
+                    }.getOrElse { error -> "<unreadable:${error.javaClass.simpleName}>" }
+                    "Bundle{$entries}"
+                }
+                is Bitmap -> "Bitmap{${value.width}x${value.height},${value.config}}"
+                is Icon -> "Icon{type=${value.type}}"
+                is Collection<*> -> {
+                    val items = value.take(16).mapIndexed { index, item ->
+                        "#$index=${describeDiagnosticValue(item, depth + 1, visited)}"
+                    }.joinToString(", ")
+                    "${value.javaClass.simpleName}[$items]"
+                }
+                is Array<*> -> {
+                    val items = value.take(16).mapIndexed { index, item ->
+                        "#$index=${describeDiagnosticValue(item, depth + 1, visited)}"
+                    }.joinToString(", ")
+                    "Array[$items]"
+                }
+                else -> describeDiagnosticObject(value, depth, visited)
+            }
+        } catch (t: Throwable) {
+            "${value.javaClass.name}{unreadable=${t.javaClass.simpleName}}"
+        } finally {
+            visited.remove(value)
+        }
+    }
+
+    private fun describeDiagnosticObject(
+        value: Any,
+        depth: Int,
+        visited: IdentityHashMap<Any, Boolean>
+    ): String {
+        val className = value.javaClass.name
+        if (className.startsWith("java.") ||
+            className.startsWith("kotlin.") ||
+            className.startsWith("android.") ||
+            className.startsWith("androidx.")
+        ) {
+            return "$className{${truncateDiagnosticText(value.toString())}}"
+        }
+
+        val fields = value.javaClass.declaredFields
+            .asSequence()
+            .filterNot { it.isSynthetic || Modifier.isStatic(it.modifiers) }
+            .take(16)
+            .map { field ->
+                val fieldValue = runCatching {
+                    field.isAccessible = true
+                    field.get(value)
+                }.getOrElse { error -> "<unreadable:${error.javaClass.simpleName}>" }
+                "${field.name}=${describeDiagnosticValue(fieldValue, depth + 1, visited)}"
+            }
+            .joinToString(", ")
+        return "$className{$fields}"
+    }
+
+    private fun truncateDiagnosticText(value: String?): String {
+        if (value == null) return "null"
+        val flattened = value.replace('\n', ' ').replace('\r', ' ')
+        return if (flattened.length <= 240) flattened else flattened.take(240) + "..."
     }
 
     // ══════════════════════════════════════════════════════════════════════

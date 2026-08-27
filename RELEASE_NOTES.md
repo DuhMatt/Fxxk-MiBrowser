@@ -1,5 +1,29 @@
 # Release Notes
 
+## v1.2.11 — HyperOS 4 Copy Direct (Pre-release)
+
+> **警告：这是 Pre-release，不是正式稳定版本。仅推荐 HyperOS 4 / Android 17 开发版用户更新。该版本尚未在 HyperOS 3 真机回归；HyperOS 3 用户请继续使用 v1.2.9。如遇异常，请降级至 v1.2.9。**
+
+### 中文
+
+- 修复 HyperOS 4“复制直达”识别网页链接后，仍固定显示并调用小米浏览器的问题。
+- 将 `get_copy_direct_data` 返回的网页 Intent 改写为用户设置的系统默认浏览器，同时保持非 HTTP(S) 和非小米浏览器目标不变。
+- 在最终气泡 `CueData` 中同步替换目标包名和“在浏览器中打开”文案。
+- 参考小米互传通知图标的处理方式，直接读取默认浏览器的真实应用图标并注入复制直达气泡，避免依赖 HyperAI 仅支持小米内置图标的标识表。
+- 已在 HyperOS `OS4.0.0.17.XPACNXM`、Android 17、默认浏览器 Via (`mark.via`) 上实测：名称、图标和点击跳转均正确，且不再提示“执行失败”。
+- 保留 v1.2.10-beta 的超级小爱 `s2.isIntentAvailable()` 修复和版本门控。
+
+> **Warning: this is a pre-release, not a stable release. It is recommended only for HyperOS 4 / Android 17 developer-build users. It has not been regression-tested on HyperOS 3; HyperOS 3 users should remain on v1.2.9. Downgrade to v1.2.9 if problems occur.**
+
+### English
+
+- Fix HyperOS 4 Clipboard shortcut web cards still displaying and invoking Xiaomi Browser.
+- Rewrite HTTP(S) `get_copy_direct_data` intents that explicitly target Xiaomi Browser to the user's system default browser, while leaving unrelated targets unchanged.
+- Synchronize the final bubble `CueData` target package and “open in browser” label with the default browser.
+- Reuse the proven Mi Share icon strategy: load the real default-browser app icon and inject it into the Clipboard shortcut bubble instead of relying on HyperAI's Xiaomi-only builtin icon registry.
+- Tested on HyperOS `OS4.0.0.17.XPACNXM`, Android 17, with Via (`mark.via`) as default: label, icon, and click routing all worked without the “execution failed” toast.
+- Retain the v1.2.10-beta Super XiaoAi `s2.isIntentAvailable()` fix and version gate.
+
 ## v1.2.10-beta — HyperOS 4 only (Pre-release)
 
 > **警告：这是 Beta / Pre-release，不是正式稳定版本。仅推荐 HyperOS 4 / Android 17 开发版用户更新。该版本尚未在 HyperOS 3 真机回归，可能影响 HyperOS 3 上原本正常的功能；HyperOS 3 用户请继续使用 v1.2.9。如遇异常，请降级至 v1.2.9。**
