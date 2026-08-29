@@ -33,7 +33,9 @@ Prevent HyperOS from forcing links into Xiaomi Browser; redirect to the system d
 
 ### 已知兼容性限制
 
-> **v1.2.12 是面向超级小爱 `8.2.3.1616` 的适配版本。尚未在 HyperOS 3 上进行回归测试；小米系统组件和系统版本可以独立更新，兼容性以超级小爱版本为准。**
+> ⚠️ **重要兼容性警告：v1.2.12 尚未在 HyperOS 3 上进行真机测试，可能存在兼容性问题。HyperOS 3 用户请谨慎更新；如果遇到问题，建议回退到 v1.2.9。**
+
+v1.2.12 面向超级小爱 `8.2.3.1616`。小米系统组件和系统版本可以独立更新，兼容性以超级小爱版本为准。
 
 小爱识屏现在适配超级小爱 `8.2.3.1616`（`versionCode 508002003`）的 `com.xiaomi.voiceassistant.utils.t2.isIntentAvailable()` 链路。识别到网页链接后，会恢复真实 HTTP(S) 地址并交给系统默认浏览器。复制直达网页卡片也会将固定的小米浏览器动作、名称和图标同步替换为用户当前设置的默认浏览器。
 
@@ -204,7 +206,9 @@ The module does not hard-code Chrome, Edge, Firefox, Via, or any other browser. 
 
 ### Known Compatibility Limitation
 
-> **v1.2.12 targets Super XiaoAi `8.2.3.1616`. It has not been regression-tested on HyperOS 3. Xiaomi system components and system versions can update independently, so compatibility is described by the Super XiaoAi version.**
+> ⚠️ **IMPORTANT COMPATIBILITY WARNING: v1.2.12 has not been tested on HyperOS 3 and may have compatibility problems. HyperOS 3 users should update with caution; if you encounter issues, we recommend rolling back to v1.2.9.**
+
+v1.2.12 targets Super XiaoAi `8.2.3.1616`. Xiaomi system components and system versions can update independently, so compatibility is described by the Super XiaoAi version.
 
 The screen-recognition hook targets Super XiaoAi `8.2.3.1616` (`versionCode 508002003`) and its `com.xiaomi.voiceassistant.utils.t2.isIntentAvailable()` path. Recognized HTTP(S) links are recovered and handed to the system default browser. For Clipboard shortcut web cards, the forced Xiaomi Browser action, label, and icon are synchronized with the user's current default browser.
 

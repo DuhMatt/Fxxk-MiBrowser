@@ -2,6 +2,10 @@
 
 ## v1.2.12 — Super XiaoAi 8.2.3.1616
 
+> ⚠️ **重要兼容性警告：本版本尚未在 HyperOS 3 上进行真机测试，可能存在兼容性问题。HyperOS 3 用户请谨慎更新；如果遇到问题，建议回退到 v1.2.9。**
+
+> ⚠️ **IMPORTANT COMPATIBILITY WARNING: This release has not been tested on HyperOS 3 and may have compatibility problems. HyperOS 3 users should update with caution; if you encounter issues, we recommend rolling back to v1.2.9.**
+
 ### 中文
 
 - 修复超级小爱识屏后点击网页链接显示“无法打开网址”的问题。
