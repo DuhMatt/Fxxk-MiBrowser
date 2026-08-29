@@ -1,5 +1,27 @@
 # Release Notes
 
+## v1.2.12 — Super XiaoAi 8.2.3.1616
+
+### 中文
+
+- 修复超级小爱识屏后点击网页链接显示“无法打开网址”的问题。
+- 适配超级小爱 `8.2.3.1616`（`com.miui.voiceassist`，`versionCode 508002003`）新的 `com.xiaomi.voiceassistant.utils.t2.isIntentAvailable(Intent, Context)` 链路。
+- 在可用性检查阶段恢复识别到的 HTTP(S) 网页地址，并交给用户设置的系统默认浏览器；不再跳转到小米应用商店的浏览器下载页。
+- 本版本只保留当前超级小爱版本的精确适配，不再包含旧版 `b2/f2/s2` 兼容路径或旧版本门控。
+- 已在超级小爱 `8.2.3.1616`、默认浏览器 Via (`mark.via`) 的真机环境验证通过。
+- 尚未在 HyperOS 3 上进行回归测试；由于小米系统组件与系统版本可独立更新，本文以超级小爱版本作为适配依据，不以 HyperOS/Android 版本作为硬性限制。
+- 主仓库同时提供普通版与 Log 版；Xposed Modules 仓库仅提供普通版。
+
+### English
+
+- Fix the “unable to open URL” toast when opening a web link from Super XiaoAi screen recognition.
+- Adapt to Super XiaoAi `8.2.3.1616` (`com.miui.voiceassist`, `versionCode 508002003`) and its new `com.xiaomi.voiceassistant.utils.t2.isIntentAvailable(Intent, Context)` path.
+- Recover the recognized HTTP(S) URL during the availability check and hand it to the user's Android default browser instead of falling through to Xiaomi Market's browser download page.
+- This release keeps only the exact current Super XiaoAi compatibility path; the old `b2/f2/s2` compatibility paths and version gate are removed.
+- Verified on-device with Super XiaoAi `8.2.3.1616` and Via (`mark.via`) as the default browser.
+- HyperOS 3 regression testing has not been performed. Xiaomi system components and system versions can update independently, so compatibility is described by the Super XiaoAi version rather than a hard HyperOS or Android-version restriction.
+- The personal repository ships both Release and Log APKs; the Xposed Modules repository ships only the Release APK.
+
 ## v1.2.11 — HyperOS 4 Copy Direct (Pre-release)
 
 > **警告：这是 Pre-release，不是正式稳定版本。仅推荐 HyperOS 4 / Android 17 开发版用户更新。该版本尚未在 HyperOS 3 真机回归；HyperOS 3 用户请继续使用 v1.2.9。如遇异常，请降级至 v1.2.9。**

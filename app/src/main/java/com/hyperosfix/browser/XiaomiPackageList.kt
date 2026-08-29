@@ -54,27 +54,8 @@ object XiaomiPackageList {
         "i26",
     )
 
-    // com.miui.voiceassist — utility class changed across builds
-    // Original: com.xiaomi.voiceassistant.utils.b2
-    // Newer: com.xiaomi.voiceassistant.utils.f2 (isIntentAvailable moved here)
-    // Voice Assist now uses standard startActivity — framework hooks suffice.
-    val CLASS_VOICE_ASSIST_CANDIDATES = listOf(
-        "com.xiaomi.voiceassistant.utils.b2",
-        "com.xiaomi.voiceassistant.utils.f2",
-    )
-
-    /**
-     * HyperOS 4 developer builds moved screen-recognition availability checks
-     * into this utility class. Keep it separate from the legacy candidates so
-     * HyperOS 3 devices retain the existing hook path.
-     */
-    const val CLASS_VOICE_ASSIST_S2 = "com.xiaomi.voiceassistant.utils.s2"
-
-    /** Super XiaoAi 8.0.30.4121, observed on HyperOS 4 / Android 17. */
-    const val VOICE_ASSIST_S2_MIN_VERSION_CODE = 508000030L
-
-    fun shouldHookVoiceAssistS2(versionCode: Long): Boolean =
-        versionCode >= VOICE_ASSIST_S2_MIN_VERSION_CODE
+    /** Super XiaoAi 8.2.3.1616 (508002003) screen-recognition Intent utility. */
+    const val CLASS_VOICE_ASSIST_CURRENT = "com.xiaomi.voiceassistant.utils.t2"
 
     /**
      * XiaoAi / AI Engine classes that may receive recognized screen text or
@@ -102,8 +83,7 @@ object XiaomiPackageList {
         "com.xiaomi.voiceassistant.screenrecognition.ScreenRecognitionActivity",
         "com.xiaomi.voiceassistant.screenrecognition.ScreenRecognitionPresenter",
         "com.xiaomi.voiceassistant.screenrecognition.ScreenRecognitionService",
-        "com.xiaomi.voiceassistant.utils.b2",
-        "com.xiaomi.voiceassistant.utils.f2",
+        "com.xiaomi.voiceassistant.utils.t2",
         "com.xiaomi.voiceassistant.smartaction.SmartActionHandler",
         "com.xiaomi.voiceassistant.screen.ScreenRecognitionManager",
         // Obfuscated candidates observed on some HyperOS builds

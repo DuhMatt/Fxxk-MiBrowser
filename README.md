@@ -33,9 +33,9 @@ Prevent HyperOS from forcing links into Xiaomi Browser; redirect to the system d
 
 ### 已知兼容性限制
 
-> **v1.2.11 是面向 HyperOS 4 / Android 17 开发版的预发布测试版本，不是正式稳定版。仅推荐 HyperOS 4 用户更新。该版本尚未在 HyperOS 3 真机回归，HyperOS 3 用户请继续使用 v1.2.9；如测试预发布版后遇到异常，请降级至 v1.2.9。**
+> **v1.2.12 是面向超级小爱 `8.2.3.1616` 的适配版本。尚未在 HyperOS 3 上进行回归测试；小米系统组件和系统版本可以独立更新，兼容性以超级小爱版本为准。**
 
-小爱识屏现在按超级小爱版本选择 Hook：低于 `versionCode 508000030` 时保留旧的 `b2/f2` 路径；从实测版本 `8.0.30.4121`（`versionCode 508000030`）开始，启用 HyperOS 4 的 `s2.isIntentAvailable()` 修复。复制直达网页卡片会将固定的小米浏览器动作、名称和图标同步替换为用户当前设置的默认浏览器。这个版本门控用于降低对旧设备的影响，但不能替代 HyperOS 3 真机回归，因此当前不宣称 v1.2.11 已兼容 HyperOS 3。
+小爱识屏现在适配超级小爱 `8.2.3.1616`（`versionCode 508002003`）的 `com.xiaomi.voiceassistant.utils.t2.isIntentAvailable()` 链路。识别到网页链接后，会恢复真实 HTTP(S) 地址并交给系统默认浏览器。复制直达网页卡片也会将固定的小米浏览器动作、名称和图标同步替换为用户当前设置的默认浏览器。
 
 同理，其他作用域 app 目前虽然还没有收到明确的“旧版本导致 bug”反馈，但如果遇到相关问题，也建议先去小米应用商店把各个作用域 app 更新到最新版本后再测试。提交反馈时请附上系统、应用和 LSPosed 版本，以及相关日志。
 
@@ -86,7 +86,7 @@ mimarket://details?id=com.android.browser
 | Dex 优化器包装 | 支持 |
 | 测试默认浏览器 | Via (`mark.via`) |
 
-上表是 v1.2.9 旧路径在 HyperOS 3 上的既有测试记录。v1.2.11 的新路径另在同一设备的 Android `17`、SDK `37`、HyperOS `OS4.0.0.17.XPACNXM`、超级小爱 `8.0.30.4121`（`versionCode 508000030`）上完成实测：识屏网页链接正常交给 Via，且不再出现“未安装该应用，请先安装”Toast；复制直达识别网页链接时，卡片动作、浏览器名称和图标均会跟随系统默认浏览器。
+上表是 v1.2.9 旧路径在 HyperOS 3 上的既有测试记录。v1.2.12 的当前路径已在超级小爱 `8.2.3.1616`（`versionCode 508002003`）上完成实测：识屏网页链接正常交给 Via，且不再出现“无法打开网址”Toast；复制直达识别网页链接时，卡片动作、浏览器名称和图标均会跟随系统默认浏览器。v1.2.12 尚未在 HyperOS 3 上回归测试。
 
 小米互传场景，实测能从接收数据里恢复原始网页链接：
 
@@ -204,9 +204,9 @@ The module does not hard-code Chrome, Edge, Firefox, Via, or any other browser. 
 
 ### Known Compatibility Limitation
 
-> **v1.2.11 is a pre-release test build for HyperOS 4 / Android 17 developer builds, not a stable release. It is recommended only for HyperOS 4 users. This version has not been regression-tested on HyperOS 3; HyperOS 3 users should remain on v1.2.9. Downgrade to v1.2.9 if the pre-release causes problems.**
+> **v1.2.12 targets Super XiaoAi `8.2.3.1616`. It has not been regression-tested on HyperOS 3. Xiaomi system components and system versions can update independently, so compatibility is described by the Super XiaoAi version.**
 
-The screen-recognition hook is selected by the installed Super XiaoAi version. Builds below `versionCode 508000030` retain the legacy `b2/f2` path, while tested build `8.0.30.4121` (`versionCode 508000030`) and later enable the HyperOS 4 `s2.isIntentAvailable()` workaround. For Clipboard shortcut web cards, the forced Xiaomi Browser action, label, and icon are all synchronized with the user's current default browser. This gate reduces risk to older devices but does not replace real HyperOS 3 regression testing, so v1.2.11 is not claimed to be verified on HyperOS 3.
+The screen-recognition hook targets Super XiaoAi `8.2.3.1616` (`versionCode 508002003`) and its `com.xiaomi.voiceassistant.utils.t2.isIntentAvailable()` path. Recognized HTTP(S) links are recovered and handed to the system default browser. For Clipboard shortcut web cards, the forced Xiaomi Browser action, label, and icon are synchronized with the user's current default browser.
 
 The same advice applies to other scoped Xiaomi apps as well. There are no confirmed old-version bugs for those apps yet, but if you run into related problems, it is still worth updating the scoped apps from Xiaomi Market before reporting the issue. Please include the system, app, and LSPosed versions plus relevant logs in a report.
 
@@ -250,7 +250,7 @@ The values below were checked on a real device and in LSPosed Manager:
 | Dex optimizer wrapper | Supported |
 | Tested default browser | Via (`mark.via`) |
 
-The table above records the existing v1.2.9 legacy-path test on HyperOS 3. The new v1.2.11 path was separately tested on Android `17`, SDK `37`, HyperOS `OS4.0.0.17.XPACNXM`, and Super XiaoAi `8.0.30.4121` (`versionCode 508000030`): screen-recognition web links opened in Via without the “app not installed” toast, and Clipboard shortcut web cards used the default browser for the action, label, and icon.
+The table above records the existing v1.2.9 path test on HyperOS 3. The v1.2.12 path was tested with Super XiaoAi `8.2.3.1616` (`versionCode 508002003`): screen-recognition web links opened in Via without the “unable to open URL” toast, and Clipboard shortcut web cards used the default browser for the action, label, and icon. v1.2.12 has not been regression-tested on HyperOS 3.
 
 Observed Mi Share recovery path:
 
