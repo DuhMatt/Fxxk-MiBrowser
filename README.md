@@ -18,7 +18,7 @@
 
 An LSPosed module for HyperOS. It prevents Xiaomi system components from forcing web links into Xiaomi Browser and lets Android open them with the current default browser.
 
-[个人仓库 / Source Repository](https://github.com/DuhMatt/Fxxk-MiBrowser) · [Xposed 仓库 / Xposed Repository](https://github.com/Xposed-Modules-Repo/com.hyperosfix.browser) · [Releases](https://github.com/DuhMatt/Fxxk-MiBrowser/releases/latest)
+[Xposed 仓库 / Xposed Repository](https://github.com/Xposed-Modules-Repo/com.hyperosfix.browser) · [Releases](https://github.com/DuhMatt/Fxxk-MiBrowser/releases/latest)
 
 ## 主要功能 / Main Features
 
