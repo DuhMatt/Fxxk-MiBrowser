@@ -31,17 +31,19 @@ An LSPosed module for HyperOS / MIUI. It prevents Xiaomi system components from 
 | HyperOS 4 | `nezha` | `OS4.0.0.21.XPACNXM` | 17 | `8.2.3.1616` | `4.12.16`（versionCode `2030041216`） |
 | HyperOS 3 | `ishtar` | `OS3.0.307.0.WMACNXM` | 16 | `7.13.33.0017` | `3.63.1`（versionCode `2030036301`） |
 
-## 功能与效果 / What It Does
+## 主要修复场景 / Main Fixed Scenarios
 
-- 小米互传、设置中的小米路由入口、小爱识屏和复制直达识别到的网页链接，不再强制跳转小米浏览器。
-- 点击网页链接时，会打开系统当前设置的默认浏览器。
-- 小米浏览器被禁用或卸载时，网页链接不会被转到小米应用商店的浏览器下载页。
-- 复制直达识别到的网页链接，点击后也会使用系统默认浏览器打开；卡片上的浏览器名称和图标会随之变化。
+1. 小米互传分享网页链接时，系统强制调用小米浏览器。
+2. 系统设置里连接小米路由器后，“管理小米路由”入口强制跳转小米浏览器。
+3. 小爱识屏 / 复制直达识别到网页链接后，点击链接仍然调用小米浏览器。
 
-- Web links from Mi Share, the Xiaomi router entry in Settings, XiaoAi screen recognition, and Copy Direct are no longer forced into Xiaomi Browser.
-- Tapping a web link opens the browser currently selected as the Android default.
-- If Xiaomi Browser is disabled or uninstalled, the link is not redirected to Xiaomi Market's browser download page.
-- Copy Direct web cards open links in the current default browser, and their browser name and icon follow that choice.
+启用模块后，上述网页链接会交给系统当前设置的默认浏览器。
+
+1. Mi Share forces shared web links into Xiaomi Browser.
+2. The “Manage Xiaomi router” entry in Settings forces web links into Xiaomi Browser.
+3. XiaoAi screen recognition / Copy Direct opens recognized web links in Xiaomi Browser.
+
+With the module enabled, these web links are handed to the browser currently selected as the system default.
 
 ### 效果截图
 
