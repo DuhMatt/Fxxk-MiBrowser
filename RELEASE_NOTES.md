@@ -1,5 +1,40 @@
 # Release Notes
 
+## v1.3.0 — HyperOS 3/4 兼容性支持
+
+[下载地址 | Download Link](https://github.com/DuhMatt/Fxxk-MiBrowser/releases/download/v1.3.0/app-release.apk)
+
+### 中文
+
+#### 变更内容
+
+- 修复小米澎湃 AI 引擎 `4.12.16` 更新后，复制直达弹窗错误显示“小米浏览器”的问题。
+- 修复复制直达打开链接时的浏览器路由，按系统默认浏览器执行跳转。
+- 完善不同系统版本下的兼容性适配。
+
+### English
+
+#### Changes
+
+- Fixed the Copy Direct popup regression introduced after Xiaomi HyperAI `4.12.16`, where Xiaomi Browser was displayed incorrectly.
+- Corrected the browser routing for Copy Direct links so that the system default browser is used.
+- Improved compatibility across supported system versions.
+
+### 兼容性验证环境 / Compatibility Verification Environments
+
+| 设备 / Device | 系统版本 / System build | Android | 超级小爱 / Super XiaoAi | 小米澎湃 AI 引擎 / Xiaomi HyperAI |
+| --- | --- | --- | --- | --- |
+| `nezha` | `OS4.0.0.21.XPACNXM` | 17 | `8.2.3.1616` | `4.12.16`（versionCode `2030041216`） |
+| `ishtar` | `OS3.0.307.0.WMACNXM` | 16 | `7.13.33.0017` | `3.63.1`（versionCode `2030036301`） |
+
+### APK
+
+- 普通用户下载普通版 APK；Log 版仅用于运行日志记录和问题排查。
+- [下载 Log APK | Download Log APK](https://github.com/DuhMatt/Fxxk-MiBrowser/releases/download/v1.3.0/app-debug.apk)
+- Regular users should download the standard APK. Use the Log APK only for runtime logging and issue diagnosis.
+
+---
+
 ## v1.2.12 — Super XiaoAi 8.2.3.1616
 
 > ⚠️ **重要兼容性警告：本版本尚未在 HyperOS 3 上进行真机测试，可能存在兼容性问题。HyperOS 3 用户请谨慎更新；如果遇到问题，建议回退到 v1.2.9。**

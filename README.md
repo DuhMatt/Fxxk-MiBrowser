@@ -31,13 +31,11 @@ Prevent HyperOS from forcing links into Xiaomi Browser; redirect to the system d
 2. 系统设置里连接小米路由器后，“管理小米路由”入口强制跳转小米浏览器。
 3. 小爱识屏 / 复制直达识别到网页链接后，点击链接仍然调用小米浏览器。
 
-### 已知兼容性限制
+### 兼容性说明
 
-> ⚠️ **重要兼容性警告：v1.2.12 尚未在 HyperOS 3 上进行真机测试，可能存在兼容性问题。HyperOS 3 用户请谨慎更新；如果遇到问题，建议回退到 v1.2.9。**
+v1.3.0 已完成以下设备与组件版本组合的兼容性验证。小米系统组件和系统版本可以独立更新，使用时请以设备实际版本为准。
 
-v1.2.12 面向超级小爱 `8.2.3.1616`。小米系统组件和系统版本可以独立更新，兼容性以超级小爱版本为准。
-
-小爱识屏现在适配超级小爱 `8.2.3.1616`（`versionCode 508002003`）的 `com.xiaomi.voiceassistant.utils.t2.isIntentAvailable()` 链路。识别到网页链接后，会恢复真实 HTTP(S) 地址并交给系统默认浏览器。复制直达网页卡片也会将固定的小米浏览器动作、名称和图标同步替换为用户当前设置的默认浏览器。
+小爱识屏适配超级小爱 `8.2.3.1616` 的 `com.xiaomi.voiceassistant.utils.t2.isIntentAvailable()` 链路；复制直达适配小米澎湃 AI 引擎 `4.12.16` 的网页卡片渲染链路。识别到网页链接后，模块会恢复真实 HTTP(S) 地址并交给系统默认浏览器，同时同步复制直达卡片的动作、名称和图标。
 
 同理，其他作用域 app 目前虽然还没有收到明确的“旧版本导致 bug”反馈，但如果遇到相关问题，也建议先去小米应用商店把各个作用域 app 更新到最新版本后再测试。提交反馈时请附上系统、应用和 LSPosed 版本，以及相关日志。
 
@@ -71,24 +69,12 @@ mimarket://details?id=com.android.browser
 
 以下信息来自实机和 LSPosed 管理器：
 
-| 项目 | 值 |
-| --- | --- |
-| 厂商 | Xiaomi |
-| 设备型号 | `25128PNA1C` |
-| 设备代号 | `nezha` |
-| Android 版本 | `16` |
-| Android SDK | `36` |
-| HyperOS 版本名 | `OS3.0` |
-| HyperOS 增量版本 | `OS3.0.307.0.WPACNXM` |
-| 系统构建版本 | `16OS3.1.260514.221906302.QCPECN.S` |
-| LSPosed | `2.0.2 (7668)` |
-| Xposed API | `101` |
-| LSPosed 管理器包名 | `org.lsposed.manager` |
-| Xposed API 调用保护 | 已启用 |
-| Dex 优化器包装 | 支持 |
-| 测试默认浏览器 | Via (`mark.via`) |
+| 设备 / Device | 系统版本 / System build | Android | 超级小爱 / Super XiaoAi | 小米澎湃 AI 引擎 / Xiaomi HyperAI |
+| --- | --- | --- | --- | --- |
+| `nezha` | `OS4.0.0.21.XPACNXM` | 17 | `8.2.3.1616` | `4.12.16`（versionCode `2030041216`） |
+| `ishtar` | `OS3.0.307.0.WMACNXM` | 16 | `7.13.33.0017` | `3.63.1`（versionCode `2030036301`） |
 
-上表是 v1.2.9 旧路径在 HyperOS 3 上的既有测试记录。v1.2.12 的当前路径已在超级小爱 `8.2.3.1616`（`versionCode 508002003`）上完成实测：识屏网页链接正常交给 Via，且不再出现“无法打开网址”Toast；复制直达识别网页链接时，卡片动作、浏览器名称和图标均会跟随系统默认浏览器。v1.2.12 尚未在 HyperOS 3 上回归测试。
+v1.3.0 的复制直达及相关网页跳转路径已在上述环境完成验证。
 
 小米互传场景，实测能从接收数据里恢复原始网页链接：
 
@@ -121,8 +107,6 @@ mimarket://details?id=com.android.browser
 -> https://baidu.com
 -> 用户设置的默认浏览器
 ```
-
-原有链路曾在 HyperOS 3 的超级小爱 `7.13.23.0020` 上随 v1.2.9 测试通过；v1.2.11 尚未在该环境重新测试。
 
 ### 使用要求
 
@@ -162,7 +146,7 @@ Release 构建：
 ./gradlew assembleRelease
 ```
 
-默认生成的 release APK 没有签名。如果要分发，需要自己签名。
+如果存在本地 `signing/release-keystore.properties`，`assembleRelease` 会使用项目 Release keystore 签名；分发前请确认签名配置和产物来源。
 
 ### 调试
 
@@ -192,7 +176,7 @@ HyperOS / MIUI 的内部实现经常变。这个模块只保证在上面列出�
 
 ## English
 
-Current pre-release version: `1.2.11`
+Current version: `1.3.0`
 
 This is an LSPosed module for HyperOS. It fixes one core problem: when Xiaomi system components receive a web link, they should not force it into Xiaomi Browser, and they should not open Xiaomi Market's browser download page when Xiaomi Browser is removed or disabled. The link should go to the browser the user selected as the Android default browser.
 
@@ -204,13 +188,11 @@ The module does not hard-code Chrome, Edge, Firefox, Via, or any other browser. 
 2. The "Manage Xiaomi router" entry in system Wi-Fi settings opens Xiaomi Browser.
 3. Super XiaoAi screen recognition / Clipboard shortcut opens recognized web links with Xiaomi Browser.
 
-### Known Compatibility Limitation
+### Compatibility
 
-> ⚠️ **IMPORTANT COMPATIBILITY WARNING: v1.2.12 has not been tested on HyperOS 3 and may have compatibility problems. HyperOS 3 users should update with caution; if you encounter issues, we recommend rolling back to v1.2.9.**
+v1.3.0 compatibility was verified on the two physical-device environments listed in the compatibility matrix above. Xiaomi system components and system versions can update independently, so users should verify the actual component versions on their devices.
 
-v1.2.12 targets Super XiaoAi `8.2.3.1616`. Xiaomi system components and system versions can update independently, so compatibility is described by the Super XiaoAi version.
-
-The screen-recognition hook targets Super XiaoAi `8.2.3.1616` (`versionCode 508002003`) and its `com.xiaomi.voiceassistant.utils.t2.isIntentAvailable()` path. Recognized HTTP(S) links are recovered and handed to the system default browser. For Clipboard shortcut web cards, the forced Xiaomi Browser action, label, and icon are synchronized with the user's current default browser.
+The screen-recognition hook targets Super XiaoAi `8.2.3.1616` and its `com.xiaomi.voiceassistant.utils.t2.isIntentAvailable()` path. The Copy Direct path covers Xiaomi HyperAI `4.12.16` and its web-card rendering boundary. Recognized HTTP(S) links are recovered and handed to the system default browser; Copy Direct web cards also receive synchronized action, label, and icon metadata.
 
 The same advice applies to other scoped Xiaomi apps as well. There are no confirmed old-version bugs for those apps yet, but if you run into related problems, it is still worth updating the scoped apps from Xiaomi Market before reporting the issue. Please include the system, app, and LSPosed versions plus relevant logs in a report.
 
@@ -235,26 +217,7 @@ mimarket://details?id=com.android.browser
 
 ### Tested Environment
 
-The values below were checked on a real device and in LSPosed Manager:
-
-| Item | Value |
-| --- | --- |
-| Manufacturer | Xiaomi |
-| Device model | `25128PNA1C` |
-| Device codename | `nezha` |
-| Android version | `16` |
-| Android SDK | `36` |
-| HyperOS version name | `OS3.0` |
-| HyperOS incremental version | `OS3.0.307.0.WPACNXM` |
-| System build version | `16OS3.1.260514.221906302.QCPECN.S` |
-| LSPosed | `2.0.2 (7668)` |
-| Xposed API | `101` |
-| LSPosed manager package | `org.lsposed.manager` |
-| Xposed API call protection | Enabled |
-| Dex optimizer wrapper | Supported |
-| Tested default browser | Via (`mark.via`) |
-
-The table above records the existing v1.2.9 path test on HyperOS 3. The v1.2.12 path was tested with Super XiaoAi `8.2.3.1616` (`versionCode 508002003`): screen-recognition web links opened in Via without the “unable to open URL” toast, and Clipboard shortcut web cards used the default browser for the action, label, and icon. v1.2.12 has not been regression-tested on HyperOS 3.
+The bilingual compatibility matrix above records the two physical-device environments used for v1.3.0 verification.
 
 Observed Mi Share recovery path:
 
@@ -326,7 +289,7 @@ Release build:
 ./gradlew assembleRelease
 ```
 
-The default release APK is unsigned. Sign it yourself before distributing it.
+When `signing/release-keystore.properties` is present, `assembleRelease` signs the APK with the project's Release keystore. Verify the signing configuration and artifact source before distribution.
 
 ### Debugging
 

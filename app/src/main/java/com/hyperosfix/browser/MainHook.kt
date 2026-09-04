@@ -58,6 +58,7 @@ class MainHook : IXposedHookLoadPackage {
             hookXiaomiAiEngine(lpparam)
             hookActionCoreProviderCall(lpparam.classLoader)
             hookHyperAiCopyDirectCueDataPipeline(lpparam.classLoader)
+            hookHyperAiCopyDirectBubbleView(lpparam.classLoader)
             hookHyperAiCopyDirectRenderedIcon()
             if (BuildConfig.DEBUG) {
                 hookHyperAiActionProtocolDiagnostics(lpparam)
@@ -877,6 +878,69 @@ class MainHook : IXposedHookLoadPackage {
             }
         }
         Log.i(TAG, "[AI-CopyDirect-UI-FIX] Hooked $hooked CueData pipeline methods")
+    }
+
+    /**
+     * HyperAI 4.12.16 still binds the visible bubble through the public
+     * BubbleView.a(CueData) method, but its old wj0 queue entry points are no
+     * longer the Copy Direct pipeline. Hook the render boundary directly so
+     * the fix survives that internal queue rename.
+     */
+    private fun hookHyperAiCopyDirectBubbleView(classLoader: ClassLoader) {
+        val bubbleClass = try {
+            XposedHelpers.findClass(
+                "com.xiaomi.ai.bubble.core.bubbleview.view.BubbleView",
+                classLoader
+            )
+        } catch (t: Throwable) {
+            Log.w(
+                TAG,
+                "[AI-CopyDirect-UI-FIX] BubbleView unavailable: " +
+                    "${t.javaClass.simpleName} — ${t.message}"
+            )
+            return
+        }
+
+        val cueDataClass = try {
+            XposedHelpers.findClass("com.xiaomi.ai.bubble.core.model.CueData", classLoader)
+        } catch (t: Throwable) {
+            Log.w(
+                TAG,
+                "[AI-CopyDirect-UI-FIX] CueData unavailable for BubbleView hook: " +
+                    "${t.javaClass.simpleName} — ${t.message}"
+            )
+            return
+        }
+
+        val methods = bubbleClass.declaredMethods.filter { method ->
+            method.name == "a" &&
+                method.parameterTypes.size == 1 &&
+                method.parameterTypes[0] == cueDataClass
+        }
+        var hooked = 0
+        for (method in methods) {
+            try {
+                XposedBridge.hookMethod(
+                    method,
+                    object : XC_MethodHook() {
+                        override fun beforeHookedMethod(param: MethodHookParam) {
+                            rewriteHyperAiCopyDirectCueData(param.args)
+                        }
+                    }
+                )
+                hooked++
+            } catch (t: Throwable) {
+                Log.w(
+                    TAG,
+                    "[AI-CopyDirect-UI-FIX] Failed to hook BubbleView.a(CueData): " +
+                        "${t.javaClass.simpleName} — ${t.message}"
+                )
+            }
+        }
+        Log.i(
+            TAG,
+            "[AI-CopyDirect-UI-FIX] Hooked $hooked BubbleView.a(CueData) render methods"
+        )
     }
 
     /**
