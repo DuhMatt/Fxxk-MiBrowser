@@ -45,9 +45,15 @@ With the module enabled, these web links are handed to the browser currently sel
 | HyperOS 4 | `nezha` | `OS4.0.0.21.XPACNXM` | 17 | `8.2.3.1616` | `4.12.16`（versionCode `2030041216`） |
 | HyperOS 3 | `ishtar` | `OS3.0.307.0.WMACNXM` | 16 | `7.13.33.0017` | `3.63.1`（versionCode `2030036301`） |
 
-### 效果截图
+### 效果截图 / Screenshots
 
-![小米互传链接通知显示默认浏览器图标](assets/mishare-browser-icon-v1.2.6.png)
+#### HyperOS 4
+
+![HyperOS 4：小米互传链接通知显示默认浏览器图标 / Mi Share notification showing the default browser icon](assets/mishare-browser-icon-v1.2.6.png)
+
+#### HyperOS 3
+
+![HyperOS 3：小米互传链接通知显示默认浏览器图标并通过默认浏览器打开链接 / Mi Share notification showing the default browser icon and opening the link in the default browser](assets/mishare-browser-hyperos3.jpg)
 
 小米超级岛浏览器图标替换功能来自 [@189521394](https://github.com/189521394) 在 [#2](https://github.com/DuhMatt/Fxxk-MiBrowser/issues/2) 提出的建议，并参考了原项目 [com.fuckXiaomi.hookBrowser](https://github.com/Xposed-Modules-Repo/com.fuckXiaomi.hookBrowser) 的思路，在此感谢。
 
