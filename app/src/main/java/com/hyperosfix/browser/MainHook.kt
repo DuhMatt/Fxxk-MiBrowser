@@ -566,6 +566,20 @@ class MainHook : IXposedHookLoadPackage {
             runCatching { context.packageManager.getApplicationIcon(browser.packageName) }.getOrNull()
         }
 
+    private fun resolveBrowserLabel(
+        context: Context,
+        browser: DefaultBrowserResolver.BrowserInfo
+    ): String {
+        if (!browser.isDefault) {
+            return if (context.resources.configuration.locales[0].language == "zh") {
+                "浏览器"
+            } else {
+                "Browser"
+            }
+        }
+        return getDefaultBrowserLabel(context) ?: browser.packageName
+    }
+
     private fun getDefaultBrowserLabel(context: Context): String? {
         val browser = DefaultBrowserResolver.resolveDefaultBrowser(context) ?: return null
         if (!browser.isDefault) return null
@@ -1008,8 +1022,8 @@ class MainHook : IXposedHookLoadPackage {
                 return
             }
             val browser = DefaultBrowserResolver.resolveDefaultBrowser(context)
-            if (browser == null || !browser.isDefault) {
-                Log.w(TAG, "[AI-CopyDirect-FIX] Explicit default browser unavailable; preserving response")
+            if (browser == null) {
+                Log.w(TAG, "[AI-CopyDirect-FIX] No browser available; preserving response")
                 return
             }
             if (XiaomiPackageList.isXiaomiBrowser(browser.packageName)) {
@@ -1018,11 +1032,12 @@ class MainHook : IXposedHookLoadPackage {
             }
 
             intent.component = null
-            intent.setPackage(browser.packageName)
+            // Without a default browser, leaving the package unset opens the system chooser.
+            intent.setPackage(if (browser.isDefault) browser.packageName else null)
             val rewrittenIntentUri = intent.toUri(Intent.URI_INTENT_SCHEME)
             copyDirect.put("intentUri", rewrittenIntentUri)
 
-            val browserLabel = getDefaultBrowserLabel(context) ?: browser.packageName
+            val browserLabel = resolveBrowserLabel(context, browser)
             val metadataReplacements = rewriteCopyDirectMetadata(
                 copyDirect,
                 browser.packageName,
@@ -1232,8 +1247,8 @@ class MainHook : IXposedHookLoadPackage {
     private fun rewriteHyperAiCopyDirectCueData(arguments: Array<Any?>) {
         val context = android.app.AndroidAppHelper.currentApplication() ?: return
         val browser = DefaultBrowserResolver.resolveDefaultBrowser(context) ?: return
-        if (!browser.isDefault || XiaomiPackageList.isXiaomiBrowser(browser.packageName)) return
-        val browserLabel = getDefaultBrowserLabel(context) ?: browser.packageName
+        if (XiaomiPackageList.isXiaomiBrowser(browser.packageName)) return
+        val browserLabel = resolveBrowserLabel(context, browser)
         val browserIcon = getAppIcon(context, browser.packageName)
         val visited = IdentityHashMap<Any, Boolean>()
 
@@ -1492,8 +1507,8 @@ class MainHook : IXposedHookLoadPackage {
         if (!text.contains("打开")) return
         val context = textView.context ?: return
         val browser = DefaultBrowserResolver.resolveDefaultBrowser(context) ?: return
-        if (!browser.isDefault || XiaomiPackageList.isXiaomiBrowser(browser.packageName)) return
-        val label = getDefaultBrowserLabel(context) ?: browser.packageName
+        if (XiaomiPackageList.isXiaomiBrowser(browser.packageName)) return
+        val label = resolveBrowserLabel(context, browser)
         if (!text.contains(label, ignoreCase = true)) return
 
         // Run once after the current bind and once after the next layout pass;
