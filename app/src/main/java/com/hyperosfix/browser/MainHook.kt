@@ -2372,12 +2372,19 @@ class MainHook : IXposedHookLoadPackage {
     }
 
     /**
-     * Super XiaoAi 8.2.3.1616 checks a Xiaomi-Browser-only `mibrowser://` Intent
-     * through t2.isIntentAvailable(Intent, Context). Rewrite that exact Intent
-     * before the query so the current default browser is considered available.
+     * Rewrite the Xiaomi-Browser-only Intent before the availability check.
+     * The utility class is t2 in 8.2.3.1616 and b3 in 8.3.30.4420.
      */
     private fun hookCurrentVoiceAssistIntentAvailability(classLoader: ClassLoader) {
-        val className = XiaomiPackageList.CLASS_VOICE_ASSIST_CURRENT
+        for (className in listOf(
+            XiaomiPackageList.CLASS_VOICE_ASSIST_CURRENT,
+            XiaomiPackageList.CLASS_VOICE_ASSIST_8_3
+        )) {
+            hookVoiceAssistIntentAvailability(classLoader, className)
+        }
+    }
+
+    private fun hookVoiceAssistIntentAvailability(classLoader: ClassLoader, className: String) {
         try {
             val clazz = XposedHelpers.findClass(className, classLoader)
             XposedHelpers.findAndHookMethod(
@@ -2395,16 +2402,16 @@ class MainHook : IXposedHookLoadPackage {
                     }
                 }
             )
-            Log.i(TAG, "[VoiceAssist-823] Hooked $className.isIntentAvailable")
-            XposedBridge.log("[$TAG] VoiceAssist-823: hooked $className.isIntentAvailable")
+            Log.i(TAG, "[VoiceAssist] Hooked $className.isIntentAvailable")
+            XposedBridge.log("[$TAG] VoiceAssist: hooked $className.isIntentAvailable")
         } catch (t: Throwable) {
             Log.w(
                 TAG,
-                "[VoiceAssist-823] $className hook is unavailable: " +
+                "[VoiceAssist] $className hook is unavailable: " +
                     "${t.javaClass.simpleName} — ${t.message}"
             )
             XposedBridge.log(
-                "[$TAG] VoiceAssist-823: $className unavailable — " +
+                "[$TAG] VoiceAssist: $className unavailable — " +
                     "${t.javaClass.simpleName}"
             )
         }
@@ -2423,7 +2430,7 @@ class MainHook : IXposedHookLoadPackage {
         if (recovered == null) {
             Log.w(
                 TAG,
-                "[VoiceAssist-823] Xiaomi Browser intent had no recoverable web URL: ${intent.data}"
+                "[VoiceAssist] Xiaomi Browser intent had no recoverable web URL: ${intent.data}"
             )
             return false
         }
@@ -2442,7 +2449,7 @@ class MainHook : IXposedHookLoadPackage {
 
         Log.i(
             TAG,
-            "[VoiceAssist-823] Rewrote unavailable Xiaomi Browser intent to " +
+            "[VoiceAssist] Rewrote unavailable Xiaomi Browser intent to " +
                 "${intent.`package` ?: "system resolver"}: $recovered"
         )
         return true
