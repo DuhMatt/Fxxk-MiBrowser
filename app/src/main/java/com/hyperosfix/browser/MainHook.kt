@@ -566,6 +566,20 @@ class MainHook : IXposedHookLoadPackage {
             runCatching { context.packageManager.getApplicationIcon(browser.packageName) }.getOrNull()
         }
 
+    private fun resolveBrowserLabel(
+        context: Context,
+        browser: DefaultBrowserResolver.BrowserInfo
+    ): String {
+        if (!browser.isDefault) {
+            return if (context.resources.configuration.locales[0].language == "zh") {
+                "浏览器"
+            } else {
+                "Browser"
+            }
+        }
+        return getDefaultBrowserLabel(context) ?: browser.packageName
+    }
+
     private fun getDefaultBrowserLabel(context: Context): String? {
         val browser = DefaultBrowserResolver.resolveDefaultBrowser(context) ?: return null
         if (!browser.isDefault) return null
@@ -1008,8 +1022,8 @@ class MainHook : IXposedHookLoadPackage {
                 return
             }
             val browser = DefaultBrowserResolver.resolveDefaultBrowser(context)
-            if (browser == null || !browser.isDefault) {
-                Log.w(TAG, "[AI-CopyDirect-FIX] Explicit default browser unavailable; preserving response")
+            if (browser == null) {
+                Log.w(TAG, "[AI-CopyDirect-FIX] No browser available; preserving response")
                 return
             }
             if (XiaomiPackageList.isXiaomiBrowser(browser.packageName)) {
@@ -1018,11 +1032,12 @@ class MainHook : IXposedHookLoadPackage {
             }
 
             intent.component = null
-            intent.setPackage(browser.packageName)
+            // Without a default browser, leaving the package unset opens the system chooser.
+            intent.setPackage(if (browser.isDefault) browser.packageName else null)
             val rewrittenIntentUri = intent.toUri(Intent.URI_INTENT_SCHEME)
             copyDirect.put("intentUri", rewrittenIntentUri)
 
-            val browserLabel = getDefaultBrowserLabel(context) ?: browser.packageName
+            val browserLabel = resolveBrowserLabel(context, browser)
             val metadataReplacements = rewriteCopyDirectMetadata(
                 copyDirect,
                 browser.packageName,
@@ -1232,8 +1247,8 @@ class MainHook : IXposedHookLoadPackage {
     private fun rewriteHyperAiCopyDirectCueData(arguments: Array<Any?>) {
         val context = android.app.AndroidAppHelper.currentApplication() ?: return
         val browser = DefaultBrowserResolver.resolveDefaultBrowser(context) ?: return
-        if (!browser.isDefault || XiaomiPackageList.isXiaomiBrowser(browser.packageName)) return
-        val browserLabel = getDefaultBrowserLabel(context) ?: browser.packageName
+        if (XiaomiPackageList.isXiaomiBrowser(browser.packageName)) return
+        val browserLabel = resolveBrowserLabel(context, browser)
         val browserIcon = getAppIcon(context, browser.packageName)
         val visited = IdentityHashMap<Any, Boolean>()
 
@@ -1492,8 +1507,8 @@ class MainHook : IXposedHookLoadPackage {
         if (!text.contains("打开")) return
         val context = textView.context ?: return
         val browser = DefaultBrowserResolver.resolveDefaultBrowser(context) ?: return
-        if (!browser.isDefault || XiaomiPackageList.isXiaomiBrowser(browser.packageName)) return
-        val label = getDefaultBrowserLabel(context) ?: browser.packageName
+        if (XiaomiPackageList.isXiaomiBrowser(browser.packageName)) return
+        val label = resolveBrowserLabel(context, browser)
         if (!text.contains(label, ignoreCase = true)) return
 
         // Run once after the current bind and once after the next layout pass;
@@ -1931,28 +1946,30 @@ class MainHook : IXposedHookLoadPackage {
 
         XposedBridge.log("[$TAG] Hooking Xiaomi AI Engine (com.xiaomi.aicr)...")
 
-        // Try each candidate class until one works
-        var foundClass = false
+        // Try each candidate class; a class may still exist in a newer build
+        // while its isInstallForApp method moved elsewhere, so keep going
+        // until at least one signature was hooked.
+        var hookedAny = false
         for (className in XiaomiPackageList.CLASS_SMART_PASSWORD_UTILS_CANDIDATES) {
             try {
                 val clazz = XposedHelpers.findClass(className, cl)
-                foundClass = true
                 Log.i(TAG, "[AI-Engine] Found target class: $className")
                 XposedBridge.log("[$TAG] AI-Engine: using class $className")
 
                 // Hook isInstallForApp by signature: (Context, String) → boolean
-                // The method name may be "isInstallForApp" or obfuscated (e.g. "A")
-                hookIsInstallForApp(clazz, className)
-                break
+                // The method name may be obfuscated (e.g. "A", "k", "K")
+                if (hookIsInstallForApp(clazz, className) > 0) {
+                    hookedAny = true
+                }
             } catch (_: Throwable) {
                 Log.d(TAG, "[AI-Engine] Class not found: $className, trying next...")
             }
         }
 
-        if (!foundClass) {
-            Log.w(TAG, "[AI-Engine] No SmartPasswordUtils candidate found. " +
+        if (!hookedAny) {
+            Log.w(TAG, "[AI-Engine] No SmartPasswordUtils install-check found. " +
                 "Framework hooks will still catch startActivity calls.")
-            XposedBridge.log("[$TAG] AI-Engine: no SmartPasswordUtils found — relying on framework hooks")
+            XposedBridge.log("[$TAG] AI-Engine: no install-check class found — relying on framework hooks")
         }
 
         // Note: jumpToXiaoMiBrowser has been removed in HyperOS V816 / aicr 3.17.3.
@@ -2307,8 +2324,10 @@ class MainHook : IXposedHookLoadPackage {
      * This is resilient to R8 obfuscation which renames the method
      * (e.g. "isInstallForApp" → "A") but preserves the signature.
      */
-    private fun hookIsInstallForApp(clazz: Class<*>, className: String) {
-        // Strategy 1: Try the known method name first
+    private fun hookIsInstallForApp(clazz: Class<*>, className: String): Int {
+        var hooked = 0
+
+        // Strategy 1: Try the known method names first
         for (methodName in listOf("isInstallForApp", "A")) {
             try {
                 XposedHelpers.findAndHookMethod(
@@ -2325,11 +2344,13 @@ class MainHook : IXposedHookLoadPackage {
                     })
                 Log.i(TAG, "[AI-Engine] Hooked $className.$methodName(Context, String)")
                 XposedBridge.log("[$TAG] AI-Engine: hooked $className.$methodName")
-                return
+                hooked++
             } catch (_: Throwable) {
                 // Try next name
             }
         }
+
+        if (hooked > 0) return hooked
 
         // Strategy 2: Scan all declared methods for (Context, String) → boolean
         // This catches any obfuscated name
@@ -2352,13 +2373,16 @@ class MainHook : IXposedHookLoadPackage {
                     })
                     Log.i(TAG, "[AI-Engine] Hooked $className.${method.name}(Context, String) via signature scan")
                     XposedBridge.log("[$TAG] AI-Engine: hooked $className.${method.name} via scan")
-                    return
+                    hooked++
                 }
             }
-            Log.w(TAG, "[AI-Engine] No (Context, String)→boolean method found in $className")
+            if (hooked == 0) {
+                Log.w(TAG, "[AI-Engine] No (Context, String)→boolean method found in $className")
+            }
         } catch (t: Throwable) {
             Log.w(TAG, "[AI-Engine] Signature scan failed for $className: ${t.message}")
         }
+        return hooked
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -2372,41 +2396,48 @@ class MainHook : IXposedHookLoadPackage {
     }
 
     /**
-     * Super XiaoAi 8.2.3.1616 checks a Xiaomi-Browser-only `mibrowser://` Intent
-     * through t2.isIntentAvailable(Intent, Context). Rewrite that exact Intent
-     * before the query so the current default browser is considered available.
+     * Super XiaoAi checks the availability of a Xiaomi-Browser-only
+     * `mibrowser://` Intent through <utils>.isIntentAvailable(Intent, Context):
+     * - 8.3.30.4420: com.xiaomi.voiceassistant.utils.b3
+     * - 8.2.3.1616: com.xiaomi.voiceassistant.utils.t2
+     * Rewrite that exact Intent before the query so the current default
+     * browser is considered available.
      */
     private fun hookCurrentVoiceAssistIntentAvailability(classLoader: ClassLoader) {
-        val className = XiaomiPackageList.CLASS_VOICE_ASSIST_CURRENT
-        try {
-            val clazz = XposedHelpers.findClass(className, classLoader)
-            XposedHelpers.findAndHookMethod(
-                clazz,
-                "isIntentAvailable",
-                Intent::class.java,
-                Context::class.java,
-                object : XC_MethodHook() {
-                    override fun beforeHookedMethod(param: MethodHookParam) {
-                        val intent = param.args[0] as? Intent ?: return
-                        val context = param.args[1] as? Context ?: return
-                        if (rewriteHyperOs4VoiceAssistBrowserIntent(intent, context)) {
-                            param.result = true
+        var hookedAny = false
+        for (className in XiaomiPackageList.CLASS_VOICE_ASSIST_INTENT_UTILS_CANDIDATES) {
+            try {
+                val clazz = XposedHelpers.findClass(className, classLoader)
+                XposedHelpers.findAndHookMethod(
+                    clazz,
+                    "isIntentAvailable",
+                    Intent::class.java,
+                    Context::class.java,
+                    object : XC_MethodHook() {
+                        override fun beforeHookedMethod(param: MethodHookParam) {
+                            val intent = param.args[0] as? Intent ?: return
+                            val context = param.args[1] as? Context ?: return
+                            if (rewriteHyperOs4VoiceAssistBrowserIntent(intent, context)) {
+                                param.result = true
+                            }
                         }
                     }
-                }
-            )
-            Log.i(TAG, "[VoiceAssist-823] Hooked $className.isIntentAvailable")
-            XposedBridge.log("[$TAG] VoiceAssist-823: hooked $className.isIntentAvailable")
-        } catch (t: Throwable) {
-            Log.w(
-                TAG,
-                "[VoiceAssist-823] $className hook is unavailable: " +
-                    "${t.javaClass.simpleName} — ${t.message}"
-            )
-            XposedBridge.log(
-                "[$TAG] VoiceAssist-823: $className unavailable — " +
-                    "${t.javaClass.simpleName}"
-            )
+                )
+                Log.i(TAG, "[VoiceAssist] Hooked $className.isIntentAvailable")
+                XposedBridge.log("[$TAG] VoiceAssist: hooked $className.isIntentAvailable")
+                hookedAny = true
+            } catch (t: Throwable) {
+                Log.d(
+                    TAG,
+                    "[VoiceAssist] $className.isIntentAvailable unavailable: " +
+                        "${t.javaClass.simpleName} — ${t.message}"
+                )
+            }
+        }
+
+        if (!hookedAny) {
+            Log.w(TAG, "[VoiceAssist] No isIntentAvailable utility class matched")
+            XposedBridge.log("[$TAG] VoiceAssist: no isIntentAvailable hook available")
         }
     }
 

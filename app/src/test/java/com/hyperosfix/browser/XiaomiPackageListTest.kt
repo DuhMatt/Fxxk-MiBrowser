@@ -6,10 +6,13 @@ import org.junit.Test
 class XiaomiPackageListTest {
 
     @Test
-    fun `voice assist hook targets only the current 8_2_3 intent utility`() {
+    fun `voice assist intent utility candidates cover current Super XiaoAi builds`() {
         assertEquals(
-            "com.xiaomi.voiceassistant.utils.t2",
-            XiaomiPackageList.CLASS_VOICE_ASSIST_CURRENT
+            listOf(
+                "com.xiaomi.voiceassistant.utils.b3",
+                "com.xiaomi.voiceassistant.utils.t2",
+            ),
+            XiaomiPackageList.CLASS_VOICE_ASSIST_INTENT_UTILS_CANDIDATES
         )
     }
 }
