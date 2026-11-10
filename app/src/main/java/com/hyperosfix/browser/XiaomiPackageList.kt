@@ -57,6 +57,9 @@ object XiaomiPackageList {
     /** Super XiaoAi 8.2.3.1616 (508002003) screen-recognition Intent utility. */
     const val CLASS_VOICE_ASSIST_CURRENT = "com.xiaomi.voiceassistant.utils.t2"
 
+    /** Super XiaoAi 8.3.30.4420 (508003030) screen-recognition Intent utility. */
+    const val CLASS_VOICE_ASSIST_8_3 = "com.xiaomi.voiceassistant.utils.b3"
+
     /**
      * XiaoAi / AI Engine classes that may receive recognized screen text or
      * URL strings before Xiaomi rewrites the launch into a browser/market
