@@ -119,11 +119,15 @@ jobs:
             "$RUNNER_TEMP/v1.3.1-assets/app-release.apk" \
             "$RUNNER_TEMP/v1.3.1-assets/app-debug.apk" \
             --clobber
-          gh release view "$RELEASE_TAG" --json assets \
-            | jq -e '.assets | map(.name) | index("app-release.apk") != null and index("app-debug.apk") != null' > /dev/null
+          assets="$(gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name')"
+          grep -Fxq 'app-release.apk' <<< "$assets"
+          grep -Fxq 'app-debug.apk' <<< "$assets"
           gh release edit "$RELEASE_TAG" --draft=false
-          gh release view "$RELEASE_TAG" --json tagName,isDraft,assets \
-            | jq -e --arg tag "$RELEASE_TAG" '.tagName == $tag and .isDraft == false and ([.assets[].name] | index("app-release.apk") != null and index("app-debug.apk") != null)' > /dev/null
+          gh release view "$RELEASE_TAG" --json tagName,isDraft \
+            | jq -e --arg tag "$RELEASE_TAG" '.tagName == $tag and .isDraft == false' > /dev/null
+          assets="$(gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name')"
+          grep -Fxq 'app-release.apk' <<< "$assets"
+          grep -Fxq 'app-debug.apk' <<< "$assets"
 
       - name: Remove signing files
         if: always()
