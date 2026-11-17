@@ -21,6 +21,16 @@ object DefaultBrowserResolver {
 
     private const val TAG = "HyperOSBrowserFix_Resolver"
 
+    // Android 17 reports ResolverActivity as the match for MATCH_DEFAULT_ONLY
+    // even when no default browser is configured.
+    private const val RESOLVER_PACKAGE = "com.android.intentresolver"
+
+    private fun isResolverPlaceholder(info: ResolveInfo?): Boolean {
+        val activity = info?.activityInfo ?: return false
+        return activity.packageName == RESOLVER_PACKAGE ||
+            activity.name.endsWith(".ResolverActivity")
+    }
+
     /**
      * Result of resolving the default browser.
      */
@@ -58,7 +68,9 @@ object DefaultBrowserResolver {
             null
         }
 
-        if (defaultResolve != null && defaultResolve.activityInfo != null) {
+        if (defaultResolve != null && defaultResolve.activityInfo != null &&
+            !isResolverPlaceholder(defaultResolve)
+        ) {
             val pkg = defaultResolve.activityInfo.packageName
             val act = defaultResolve.activityInfo.name
 
@@ -69,6 +81,8 @@ object DefaultBrowserResolver {
             // Fall through — if the "default" is somehow Xiaomi Browser,
             // we treat it as if no default is set (force chooser).
             Log.w(TAG, "Default browser is Xiaomi Browser ($pkg) — will force chooser instead")
+        } else if (isResolverPlaceholder(defaultResolve)) {
+            Log.i(TAG, "No default browser configured; system resolver placeholder returned")
         }
 
         // Step 2: No default set (or default is Xiaomi Browser).
@@ -85,17 +99,16 @@ object DefaultBrowserResolver {
             return null
         }
 
-        allBrowsers.firstOrNull { !XiaomiPackageList.isXiaomiBrowser(it.activityInfo.packageName) }
-            ?.let { first ->
-            val pkg = first.activityInfo.packageName
-            val act = first.activityInfo.name
-            Log.i(TAG, "No default; first available non-Xiaomi browser: $pkg / $act")
-            return BrowserInfo(pkg, act, isDefault = false)
+        val candidates = allBrowsers.filterNot { isResolverPlaceholder(it) }
+
+        if (candidates.any { !XiaomiPackageList.isXiaomiBrowser(it.activityInfo.packageName) }) {
+            Log.i(TAG, "No default browser; links will be handed to the system chooser")
+            return BrowserInfo(RESOLVER_PACKAGE, null, isDefault = false)
         }
 
         // If ALL browsers are Xiaomi browsers (unlikely but possible):
         // still return the first one so something opens.
-        val fallback = allBrowsers.first()
+        val fallback = candidates.firstOrNull() ?: allBrowsers.first()
         Log.w(TAG, "All browsers are Xiaomi browsers, falling back to: ${fallback.activityInfo.packageName}")
         return BrowserInfo(
             fallback.activityInfo.packageName,

@@ -46,16 +46,26 @@ object XiaomiPackageList {
     // com.xiaomi.aicr — SmartPasswordUtils
     // Original: com.xiaomi.aicr.copydirect.util.SmartPasswordUtils
     // Obfuscated (HyperOS V816 / aicr 3.17.3): i26
-    // Method isInstallForApp(Context,String)->boolean is now i26.A
+    // Obfuscated (HyperOS 4 / aicr 4.13.6): b59, c59
+    // Method isInstallForApp(Context,String)->boolean is now i26.A / b59.k / c59.K
     // Method jumpToXiaoMiBrowser has been removed; AI Engine now uses
     // standard startActivity which the framework hooks already catch.
     val CLASS_SMART_PASSWORD_UTILS_CANDIDATES = listOf(
         "com.xiaomi.aicr.copydirect.util.SmartPasswordUtils",
+        "b59",
+        "c59",
         "i26",
     )
 
-    /** Super XiaoAi 8.2.3.1616 (508002003) screen-recognition Intent utility. */
-    const val CLASS_VOICE_ASSIST_CURRENT = "com.xiaomi.voiceassistant.utils.t2"
+    /**
+     * Super XiaoAi screen-recognition Intent utility:
+     * - 8.3.30.4420: com.xiaomi.voiceassistant.utils.b3
+     * - 8.2.3.1616: com.xiaomi.voiceassistant.utils.t2
+     */
+    val CLASS_VOICE_ASSIST_INTENT_UTILS_CANDIDATES = listOf(
+        "com.xiaomi.voiceassistant.utils.b3",
+        "com.xiaomi.voiceassistant.utils.t2",
+    )
 
     /**
      * XiaoAi / AI Engine classes that may receive recognized screen text or
