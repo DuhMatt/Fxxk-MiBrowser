@@ -36,14 +36,14 @@ With the module enabled, these web links are handed to the browser currently sel
 
 ## 支持范围 / Supported Versions
 
-`v1.3.0` 支持 HyperOS 3 和 HyperOS 4。下表列出已经在真机上验证过的版本组合。超级小爱或小米澎湃 AI 引擎更新后，兼容性需要重新确认。
+`v1.3.1` 支持 HyperOS 3 和 HyperOS 4。下表列出已经在真机上验证过的版本组合。超级小爱或小米澎湃 AI 引擎更新后，兼容性需要重新确认。
 
-`v1.3.0` supports HyperOS 3 and HyperOS 4. The matrix below lists the combinations verified on physical devices. Compatibility should be checked again after Super XiaoAi or Xiaomi HyperAI is updated.
+`v1.3.1` supports HyperOS 3 and HyperOS 4. The matrix below lists the combinations verified on physical devices. Compatibility should be checked again after Super XiaoAi or Xiaomi HyperAI is updated.
 
 | HyperOS | 设备 / Device | 系统版本 / System build | Android | 超级小爱 / Super XiaoAi | 小米澎湃 AI 引擎 / Xiaomi HyperAI |
 | --- | --- | --- | --- | --- | --- |
-| HyperOS 4 | `nezha` | `OS4.0.0.21.XPACNXM` | 17 | `8.2.3.1616` | `4.12.16`（versionCode `2030041216`） |
-| HyperOS 3 | `ishtar` | `OS3.0.307.0.WMACNXM` | 16 | `7.13.33.0017` | `3.63.1`（versionCode `2030036301`） |
+| HyperOS 4 | `nezha` | `OS4.0.7.0` | 17 | `8.3.30.4420` | `4.13.10` |
+| HyperOS 3 | `ishtar` | `OS3.0.308.0` | 16 | `7.13.35.0012` | `3.80.6` |
 
 ### 效果截图 / Screenshots
 
