@@ -1,5 +1,22 @@
 # Release Notes
 
+## v1.3.2 — 桌面下拉搜索改道
+
+### 中文
+
+- 新增：桌面下拉搜索框（`com.android.quicksearchbox`）的网页搜索不再强制进入小米浏览器。
+- 搜索词交给系统当前默认浏览器自身的搜索引擎处理；若该浏览器不支持 `ACTION_WEB_SEARCH`，则回退到用搜索 URL 打开。
+- 默认作用域新增 `com.android.quicksearchbox`。
+- 已知限制：钩子绑定 QSB `13.1.0.110325`（versionCode `213010025`）的混淆成员名，QSB 更新后需重新推导；未匹配时只记录告警、不崩溃。
+
+### English
+
+- **New:** web searches from the desktop swipe-down search box (`com.android.quicksearchbox`) are no longer forced into Xiaomi Browser.
+- Search terms are handed to the default browser's own search engine; if the browser does not support `ACTION_WEB_SEARCH`, a search URL is opened instead.
+- `com.android.quicksearchbox` added to the default scope.
+- Known limitation: the hook targets obfuscated members of QSB `13.1.0.110325` (versionCode `213010025`). A QSB update requires re-deriving them; on mismatch the hook logs a warning and stays inert.
+
+
 ## v1.3.0 — HyperOS 3/4 兼容性支持
 
 [下载地址 | Download Link](https://github.com/DuhMatt/Fxxk-MiBrowser/releases/download/v1.3.0/app-release.apk)
