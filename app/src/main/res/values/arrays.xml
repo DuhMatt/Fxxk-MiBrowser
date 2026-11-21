@@ -22,5 +22,8 @@
         <item>com.miui.contentcatcher</item>
         <!-- Xiaomi AI vision assistant — screen recognition on some HyperOS builds -->
         <item>com.xiaomi.aiasst.vision</item>
+        <!-- Desktop pull-down search box — rewrites its own search launches
+             from Xiaomi Browser to the user's default browser -->
+        <item>com.android.quicksearchbox</item>
     </string-array>
 </resources>
