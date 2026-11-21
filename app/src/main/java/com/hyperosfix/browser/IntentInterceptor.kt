@@ -76,6 +76,7 @@ object IntentInterceptor {
     ) {
         if (intent == null || context == null) return
 
+        if (QuickSearchBoxHook.handleFrameworkCall(context, intent, param)) return
         if (!shouldIntercept(intent, context.packageName)) return
 
         if (!enterGuard(intent)) return
@@ -99,6 +100,7 @@ object IntentInterceptor {
     ) {
         if (intent == null || context == null) return
 
+        if (QuickSearchBoxHook.handleFrameworkCall(context, intent, param)) return
         if (!shouldIntercept(intent, context.packageName)) return
 
         if (!enterGuard(intent)) return

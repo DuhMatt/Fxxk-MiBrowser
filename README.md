@@ -25,12 +25,14 @@ An LSPosed module for HyperOS. It prevents Xiaomi system components from forcing
 1. 小米互传分享网页链接时，系统强制调用小米浏览器。
 2. 系统设置里连接小米路由器后，“管理小米路由”入口强制跳转小米浏览器。
 3. 小爱识屏 / 复制直达识别到网页链接后，点击链接仍然调用小米浏览器。
+4. 桌面下拉搜索框（QuickSearchBox）的网页搜索被强制交给小米浏览器。
 
 启用模块后，上述网页链接会交给系统当前设置的默认浏览器。
 
 1. Mi Share forces shared web links into Xiaomi Browser.
 2. The “Manage Xiaomi router” entry in Settings forces web links into Xiaomi Browser.
 3. XiaoAi screen recognition / Copy Direct opens recognized web links in Xiaomi Browser.
+4. The desktop swipe-down search box (QuickSearchBox) forces web searches into Xiaomi Browser.
 
 With the module enabled, these web links are handed to the browser currently selected as the system default.
 

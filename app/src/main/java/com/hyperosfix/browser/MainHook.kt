@@ -68,6 +68,15 @@ class MainHook : IXposedHookLoadPackage {
         if (pkg == XiaomiPackageList.VOICE_ASSIST) {
             hookXiaomiVoiceAssist(lpparam)
         }
+        // ── Search box: desktop pull-down search ─────────────────────────
+        // The search box is the system GLOBAL_SEARCH handler and hard-codes
+        // com.android.browser on its search button. Its launches carry
+        // ACTION_SEARCH + an explicit component, so none of the framework
+        // hooks below ever see an ACTION_VIEW and IntentInterceptor drops
+        // them. Redirect inside the search box process instead.
+        if (pkg == XiaomiPackageList.QUICK_SEARCH_BOX) {
+            QuickSearchBoxHook.hook(lpparam)
+        }
 
         if (pkg == XiaomiPackageList.AI_ENGINE ||
             pkg == XiaomiPackageList.VOICE_ASSIST ||
