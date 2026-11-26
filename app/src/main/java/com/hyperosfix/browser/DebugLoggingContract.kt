@@ -13,6 +13,8 @@ object DebugLoggingContract {
     const val EXTRA_MESSAGE = "message"
     const val EXTRA_THROWABLE = "throwable"
     const val EXTRA_PROCESS = "process"
+    const val EXTRA_HOOKED_PACKAGE = "hooked_package"
+    const val EXTRA_HOOKED_APP_INFO = "hooked_app_info"
     const val EXTRA_TIMESTAMP = "timestamp"
     const val EXTRA_LOG_PATH = "log_path"
 
