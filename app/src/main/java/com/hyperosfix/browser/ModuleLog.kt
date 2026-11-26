@@ -58,6 +58,11 @@ object ModuleLog {
                     putString(DebugLoggingContract.EXTRA_MESSAGE, message)
                     putString(DebugLoggingContract.EXTRA_THROWABLE, DebugLogStore.stringifyThrowable(throwable))
                     putString(DebugLoggingContract.EXTRA_PROCESS, currentProcessName())
+                    putString(DebugLoggingContract.EXTRA_HOOKED_PACKAGE, app.packageName)
+                    putString(
+                        DebugLoggingContract.EXTRA_HOOKED_APP_INFO,
+                        RuntimeDiagnostics.hookedAppMetadata(app, app.packageName)
+                    )
                     putLong(DebugLoggingContract.EXTRA_TIMESTAMP, System.currentTimeMillis())
                 }
             )
