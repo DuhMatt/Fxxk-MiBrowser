@@ -31,8 +31,19 @@ class DebugLogProvider : ContentProvider() {
                         System.currentTimeMillis()
                     ) ?: System.currentTimeMillis()
                     val process = extras?.getString(DebugLoggingContract.EXTRA_PROCESS)
-                    val hookedPackage = extras?.getString(DebugLoggingContract.EXTRA_HOOKED_PACKAGE).orEmpty()
-                    val hookedAppInfo = extras?.getString(DebugLoggingContract.EXTRA_HOOKED_APP_INFO).orEmpty()
+                    val hookedPackage = extras
+                        ?.getString(DebugLoggingContract.EXTRA_HOOKED_PACKAGE)
+                        ?.takeIf(String::isNotBlank)
+                        ?: process
+                            ?.substringBefore(':')
+                            ?.takeIf { it.isNotBlank() && it != "unknown-process" && '.' in it }
+                            .orEmpty()
+                    val hookedAppInfo = extras
+                        ?.getString(DebugLoggingContract.EXTRA_HOOKED_APP_INFO)
+                        ?.takeIf(String::isNotBlank)
+                        ?: hookedPackage.takeIf(String::isNotBlank)?.let {
+                            RuntimeDiagnostics.hookedAppMetadata(appContext, it)
+                        }.orEmpty()
 
                     try {
                         appendMetadataIfNeeded(
