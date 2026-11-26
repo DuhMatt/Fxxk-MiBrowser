@@ -47,7 +47,6 @@ class MainHook : IXposedHookLoadPackage {
 
     override fun handleLoadPackage(lpparam: XC_LoadPackage.LoadPackageParam) {
         val pkg = lpparam.packageName
-        RuntimeDiagnostics.install()
         Log.i(TAG, "Module loaded in process: $pkg")
         XposedBridge.log("[$TAG] Loaded in: $pkg")
 
