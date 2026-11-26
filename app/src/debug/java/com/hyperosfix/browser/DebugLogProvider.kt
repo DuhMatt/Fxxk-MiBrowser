@@ -7,6 +7,10 @@ import android.net.Uri
 import android.os.Bundle
 
 class DebugLogProvider : ContentProvider() {
+    private val metadataLock = Any()
+    private var environmentMetadataWritten = false
+    private val hookedAppMetadataWritten = mutableSetOf<String>()
+
     override fun onCreate(): Boolean = true
 
     override fun call(method: String, arg: String?, extras: Bundle?): Bundle {
@@ -22,17 +26,38 @@ class DebugLogProvider : ContentProvider() {
 
             DebugLoggingContract.METHOD_APPEND_LOG -> {
                 if (DebugLogStore.isEnabled(appContext)) {
+                    val timestamp = extras?.getLong(
+                        DebugLoggingContract.EXTRA_TIMESTAMP,
+                        System.currentTimeMillis()
+                    ) ?: System.currentTimeMillis()
+                    val process = extras?.getString(DebugLoggingContract.EXTRA_PROCESS)
+                    val hookedPackage = extras?.getString(DebugLoggingContract.EXTRA_HOOKED_PACKAGE).orEmpty()
+                    val hookedAppInfo = extras?.getString(DebugLoggingContract.EXTRA_HOOKED_APP_INFO).orEmpty()
+
+                    try {
+                        appendMetadataIfNeeded(
+                            appContext,
+                            hookedPackage,
+                            hookedAppInfo,
+                            process,
+                            timestamp
+                        )
+                    } catch (error: Throwable) {
+                        android.util.Log.w(
+                            "DebugLogProvider",
+                            "Could not append runtime metadata: ${error.javaClass.simpleName}",
+                            error
+                        )
+                    }
+
                     val file = DebugLogStore.append(
                         appContext,
                         level = extras?.getString(DebugLoggingContract.EXTRA_LEVEL) ?: "I",
                         tag = extras?.getString(DebugLoggingContract.EXTRA_TAG) ?: "UnknownTag",
                         message = extras?.getString(DebugLoggingContract.EXTRA_MESSAGE) ?: "",
                         throwable = extras?.getString(DebugLoggingContract.EXTRA_THROWABLE),
-                        process = extras?.getString(DebugLoggingContract.EXTRA_PROCESS),
-                        timestamp = extras?.getLong(
-                            DebugLoggingContract.EXTRA_TIMESTAMP,
-                            System.currentTimeMillis()
-                        ) ?: System.currentTimeMillis()
+                        process = process,
+                        timestamp = timestamp
                     )
                     Bundle().apply {
                         putString(DebugLoggingContract.EXTRA_LOG_PATH, file?.absolutePath.orEmpty())
@@ -66,4 +91,53 @@ class DebugLogProvider : ContentProvider() {
         selection: String?,
         selectionArgs: Array<out String>?
     ): Int = 0
+
+    private fun appendMetadataIfNeeded(
+        context: android.content.Context,
+        hookedPackage: String,
+        hookedAppInfo: String,
+        process: String?,
+        timestamp: Long
+    ) {
+        synchronized(metadataLock) {
+            val currentLog = DebugLogStore.getLogFile(context)
+            if (currentLog == null || !currentLog.exists() || currentLog.length() == 0L ||
+                currentLog.length() >= DebugLoggingContract.MAX_LOG_BYTES
+            ) {
+                environmentMetadataWritten = false
+                hookedAppMetadataWritten.clear()
+            }
+
+            if (!environmentMetadataWritten) {
+                val entries = RuntimeDiagnostics.environmentMetadata(context)
+                val written = entries.all { message ->
+                    DebugLogStore.append(
+                        context,
+                        level = "I",
+                        tag = RuntimeDiagnostics.TAG,
+                        message = message,
+                        throwable = null,
+                        process = process,
+                        timestamp = timestamp
+                    ) != null
+                }
+                environmentMetadataWritten = written
+            }
+
+            if (hookedPackage.isNotBlank() && hookedAppInfo.isNotBlank() &&
+                hookedPackage !in hookedAppMetadataWritten
+            ) {
+                val file = DebugLogStore.append(
+                    context,
+                    level = "I",
+                    tag = RuntimeDiagnostics.TAG,
+                    message = hookedAppInfo,
+                    throwable = null,
+                    process = process,
+                    timestamp = timestamp
+                )
+                if (file != null) hookedAppMetadataWritten.add(hookedPackage)
+            }
+        }
+    }
 }
