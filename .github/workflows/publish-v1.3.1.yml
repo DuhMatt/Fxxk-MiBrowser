@@ -106,25 +106,18 @@ jobs:
 
           sha256sum "$OUT/app-release.apk" "$OUT/app-debug.apk"
 
-      - name: Upload APKs and publish v1.3.1
+      - name: Refresh only the v1.3.1 Log APK
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: v1.3.1
         shell: bash
         run: |
           set -euo pipefail
-          gh release view "$RELEASE_TAG" --json tagName,isDraft \
-            | jq -e --arg tag "$RELEASE_TAG" '.tagName == $tag and .isDraft == true' > /dev/null
+          gh release view "$RELEASE_TAG" --json tagName \
+            | jq -e --arg tag "$RELEASE_TAG" '.tagName == $tag' > /dev/null
           gh release upload "$RELEASE_TAG" \
-            "$RUNNER_TEMP/v1.3.1-assets/app-release.apk" \
             "$RUNNER_TEMP/v1.3.1-assets/app-debug.apk" \
             --clobber
-          assets="$(gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name')"
-          grep -Fxq 'app-release.apk' <<< "$assets"
-          grep -Fxq 'app-debug.apk' <<< "$assets"
-          gh release edit "$RELEASE_TAG" --draft=false
-          gh release view "$RELEASE_TAG" --json tagName,isDraft \
-            | jq -e --arg tag "$RELEASE_TAG" '.tagName == $tag and .isDraft == false' > /dev/null
           assets="$(gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name')"
           grep -Fxq 'app-release.apk' <<< "$assets"
           grep -Fxq 'app-debug.apk' <<< "$assets"
