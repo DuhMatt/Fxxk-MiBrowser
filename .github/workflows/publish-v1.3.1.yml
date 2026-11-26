@@ -2,16 +2,12 @@ name: Publish v1.3.1 APKs
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 
 permissions:
   contents: read
 
 jobs:
   build-sign-publish:
-    if: github.event_name == 'workflow_dispatch' || github.event.head_commit.message == 'Rebuild v1.3.1 Log APK once'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     permissions:
