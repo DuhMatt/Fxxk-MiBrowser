@@ -1,9 +1,6 @@
 name: Publish v1.3.1 APKs
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:
