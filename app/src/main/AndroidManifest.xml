@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <queries>
+        <package android:name="com.miui.voiceassist" />
+        <package android:name="com.xiaomi.aicr" />
+    </queries>
+
     <!-- No launcher Activity — this is an Xposed module, not a regular app -->
 
     <application
