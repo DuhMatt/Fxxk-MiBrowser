@@ -43,8 +43,11 @@ object DefaultBrowserResolver {
     /**
      * Builds a minimal "open web page" intent to probe the system resolver.
      * Using "https://" as a neutral URI.
+     *
+     * Not private: [QuickSearchBoxHook] reuses it to enumerate installed
+     * browsers when no default browser is configured.
      */
-    private fun buildProbeIntent() =
+    internal fun buildProbeIntent() =
         Intent(Intent.ACTION_VIEW, Uri.parse("https://www.example.com")).apply {
             addCategory(Intent.CATEGORY_BROWSABLE)
             addCategory(Intent.CATEGORY_DEFAULT)

@@ -32,6 +32,19 @@ object XiaomiPackageList {
     const val SETTINGS = "com.android.settings"
     const val CONTENT_CATCHER = "com.miui.contentcatcher"
 
+    // ── Search box (desktop pull-down search) ────────────────────────────
+    /**
+     * HyperOS desktop pull-down search box.
+     *
+     * It is the system's *global search handler*
+     * (android.search.action.GLOBAL_SEARCH) and is installed under the AOSP
+     * name, not a Xiaomi prefix. It is intentionally kept out of
+     * [ALL_XIAOMI_SYSTEM_APPS]: that set drives IntentInterceptor's
+     * "no explicit target => rewrite" rule, and every http link the search
+     * box opens in its own built-in webview would then be rewritten.
+     */
+    const val QUICK_SEARCH_BOX = "com.android.quicksearchbox"
+
     // ── HyperOS AI / voice assist apps (discovered from reference module) ─
     /** Xiaomi HyperAI Engine — handles clipboard URL recognition, screen recognition */
     const val AI_ENGINE = "com.xiaomi.aicr"
